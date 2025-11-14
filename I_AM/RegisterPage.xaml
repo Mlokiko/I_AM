@@ -6,9 +6,64 @@
 
     <VerticalStackLayout VerticalOptions="Center">
         <Label 
-            Text="Strona z rejestrowaniem"
+            Text="Rejestrowanie"
             FontSize="24"
+            FontAttributes="Bold"
             HorizontalOptions="Center" />
+
+        <Label 
+            Text="Nazwa użytkownika"
+            FontSize="18"/>
+        <Entry 
+            Placeholder="Nazwa użytkownika"
+            FontSize="18"/>
+
+        <Label 
+            Text="Hasło"
+            FontSize="18"
+            Padding="0, 15, 0, 5"/>
+        <Entry 
+            Placeholder="Hasło"
+            IsPassword="True"
+            FontSize="18" />
+
+        <Label 
+            Text="Imię"
+            FontSize="18"
+            Padding="0, 15, 0, 5"/>
+        <Entry 
+            Placeholder="Imię"
+            FontSize="18" />
+
+        <Label 
+            Text="Nazwisko"
+            FontSize="18"
+            Padding="0, 15, 0, 5"/>
+        <Entry 
+            Placeholder="Nazwisko"
+            FontSize="18" />
+
+        <Label 
+            Text="Wiek"
+            FontSize="18"
+            Padding="0, 15, 0, 5"/>
+        <Entry 
+            Placeholder="Wiek"
+            FontSize="18" />
+
+        <Label 
+            Text="Płeć"
+            FontSize="18"
+            Padding="0, 15, 0, 5"/>
+        <Picker Title="Wybierz opcję:"
+        ItemsSource="{Binding SexOptions}" />
+
+        <Button 
+            Text="Zarejestruj"
+            FontSize="18"
+            Clicked="OnRegisterButtonClicked"
+            HorizontalOptions="Fill" />
+
     </VerticalStackLayout>
 
 </ContentPage>

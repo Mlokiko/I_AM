@@ -11,22 +11,22 @@
         VerticalOptions="Center">
 
         <Label 
-            Text="Welcome!"
+            Text="Logowanie"
             FontSize="32"
             FontAttributes="Bold"
             HorizontalOptions="Center" />
 
         <Entry 
-            Placeholder="Username"
+            Placeholder="Nazwa użytkownika"
             FontSize="18" />
 
         <Entry 
-            Placeholder="Password"
+            Placeholder="Hasło"
             IsPassword="True"
             FontSize="18" />
 
         <Button 
-            Text="Login"
+            Text="Zaloguj"
             FontSize="18"
             Clicked="OnLoginButtonClicked"
             HorizontalOptions="Fill" />

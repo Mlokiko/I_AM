@@ -3,8 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="I_AM.LandingPage">
 
-
-
     <VerticalStackLayout 
         VerticalOptions="Center" 
         HorizontalOptions="Center"
@@ -16,17 +14,20 @@
         HorizontalOptions="Center" 
         Aspect="AspectFit" />
 
-        <Label 
-        Text="I AM"
-        FontSize="32"
-        TextColor="DeepSkyBlue"
-        FontAttributes="Bold"
-        HorizontalOptions="Center" />
-
-        <Label 
-        Text="I AM, a tak serio, aplikacja dla ludzi w potrzebie. Zaloguj lub zerejestruj się"
-        FontSize="18"
-        HorizontalOptions="Center" />
+        <Label>
+            <Label.FormattedText>
+                <FormattedString>
+                    <Span Text="Aplikacja dla ludzi w potrzebie. " />
+                    <Span Text="Kliknij po więcej informacji"
+                  TextColor="LightBlue" 
+                  TextDecorations="Underline">
+                        <Span.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSpanTapped" />
+                        </Span.GestureRecognizers>
+                    </Span>
+                </FormattedString>
+            </Label.FormattedText>
+        </Label>
 
 
         <Button 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.InformationPage"
+             Title="InformationPage">
+    <ScrollView>
+        <VerticalStackLayout>
+            <Label 
+                Text="Informacje"
+                VerticalOptions="Center"
+                FontSize="24"
+                Padding="20"
+                HorizontalOptions="Center" />
+
+            <Label 
+                Text="Depresja jest jedną z najczęstszych chorób XXI wieku. Osoby z depresją często izolują się i nie dzielą się swoimi problemami. System ma pomóc osobom z depresją w zwróceniu się o wsparcie do bliskiej osoby w okresach złego samopoczucia. System będzie aplikacją internetową."
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+
+            <Label 
+                Text="Użytkownicy będą mogli utworzyć konto osobiste. Po utworzeniu konta będą musieli zaprosić innego użytkownika, aby został ich opiekunem. Użytkownik będzie miał możliwość naciśnięcia przycisku, który powiadomi opiekuna o jego złym samopoczuciu. Użytkownik będzie miał dostęp do kalendarza ze zdjęciami. Każdego dnia, o godzinie ustalonej przez opiekuna, użytkownik będzie musiał przesłać zdjęcie, które pokaże, gdzie jest teraz i co robi, ułatwiając określenie, jak użytkownik się czuje i jakie postępy robi w walce z depresją. Opiekun będzie miał dostęp do kalendarza. Ponadto, raz dziennie, gdy użytkownik otworzy aplikację, zostanie poproszony o odpowiedź na 5 pytań wielokrotnego wyboru dotyczących jego samopoczucia. Na podstawie średniej odpowiedzi system zdecyduje, czy wysłać raport do opiekuna. "
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+
+            <Label 
+                Text="System jest skierowany do osób doświadczających stanów depresyjnych i ich bliskich."
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

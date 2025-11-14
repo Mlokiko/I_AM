@@ -15,5 +15,9 @@ namespace I_AM
         {
             await Shell.Current.GoToAsync(nameof(RegisterPage));
         }
+        private async void OnSpanTapped(object sender, TappedEventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(InformationPage));
+        }
     }
 }
