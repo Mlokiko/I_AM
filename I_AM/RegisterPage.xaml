@@ -7,7 +7,7 @@
     <VerticalStackLayout VerticalOptions="Center">
         <Label 
             Text="Rejestrowanie"
-            FontSize="24"
+            FontSize="32"
             FontAttributes="Bold"
             HorizontalOptions="Center" />
 
