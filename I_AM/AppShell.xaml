@@ -6,6 +6,18 @@
     xmlns:local="clr-namespace:I_AM"
     Title="I_AM">
 
+    <!-- Strony autentykacji -->
+    <ShellContent
+        Title="Logowanie"
+        ContentTemplate="{DataTemplate local:LoginPage}"
+        Route="LoginPage" />
+
+    <ShellContent
+        Title="Rejestracja"
+        ContentTemplate="{DataTemplate local:RegisterPage}"
+        Route="RegisterPage" />
+
+    <!-- Strony główne aplikacji -->
     <ShellContent
         Title="Landing Page"
         ContentTemplate="{DataTemplate local:LandingPage}"

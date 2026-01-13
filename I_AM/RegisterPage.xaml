@@ -2,68 +2,101 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="I_AM.RegisterPage"
-             Title="RegisterPage">
+             Title="Rejestracja"
+             Shell.NavBarIsVisible="False">
 
-    <VerticalStackLayout VerticalOptions="Center">
-        <Label 
-            Text="Rejestrowanie"
-            FontSize="32"
-            FontAttributes="Bold"
-            HorizontalOptions="Center" />
+    <ScrollView>
+        <VerticalStackLayout 
+            Spacing="10"
+            Padding="30,20"
+            VerticalOptions="Start">
 
-        <Label 
-            Text="Nazwa użytkownika"
-            FontSize="18"/>
-        <Entry 
-            Placeholder="Nazwa użytkownika"
-            FontSize="18"/>
+            <Label 
+                Text="Rejestracja"
+                FontSize="32"
+                FontAttributes="Bold"
+                HorizontalOptions="Center" />
 
-        <Label 
-            Text="Hasło"
-            FontSize="18"
-            Padding="0, 15, 0, 5"/>
-        <Entry 
-            Placeholder="Hasło"
-            IsPassword="True"
-            FontSize="18" />
+            <Label 
+                Text="Email"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,15,0,5"/>
+            <Entry 
+                x:Name="EmailEntry"
+                Placeholder="twój@email.com"
+                Keyboard="Email"
+                FontSize="16" />
 
-        <Label 
-            Text="Imię"
-            FontSize="18"
-            Padding="0, 15, 0, 5"/>
-        <Entry 
-            Placeholder="Imię"
-            FontSize="18" />
+            <Label 
+                Text="Hasło"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Entry 
+                x:Name="PasswordEntry"
+                Placeholder="Minimum 6 znaków"
+                IsPassword="True"
+                FontSize="16" />
 
-        <Label 
-            Text="Nazwisko"
-            FontSize="18"
-            Padding="0, 15, 0, 5"/>
-        <Entry 
-            Placeholder="Nazwisko"
-            FontSize="18" />
+            <Label 
+                Text="Imię"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Entry 
+                x:Name="FirstNameEntry"
+                Placeholder="Twoje imię"
+                FontSize="16" />
 
-        <Label 
-            Text="Wiek"
-            FontSize="18"
-            Padding="0, 15, 0, 5"/>
-        <Entry 
-            Placeholder="Wiek"
-            FontSize="18" />
+            <Label 
+                Text="Nazwisko"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Entry 
+                x:Name="LastNameEntry"
+                Placeholder="Twoje nazwisko"
+                FontSize="16" />
 
-        <Label 
-            Text="Płeć"
-            FontSize="18"
-            Padding="0, 15, 0, 5"/>
-        <Picker Title="Wybierz opcję:"
-        ItemsSource="{Binding SexOptions}" />
+            <Label 
+                Text="Wiek"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Entry 
+                x:Name="AgeEntry"
+                Placeholder="Twój wiek"
+                Keyboard="Numeric"
+                FontSize="16" />
 
-        <Button 
-            Text="Zarejestruj"
-            FontSize="18"
-            Clicked="OnRegisterButtonClicked"
-            HorizontalOptions="Fill" />
+            <Label 
+                Text="Płeć"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Picker 
+                x:Name="SexPicker"
+                Title="Wybierz opcję"
+                ItemsSource="{Binding SexOptions}"
+                FontSize="16" />
 
-    </VerticalStackLayout>
+            <Button 
+                Text="Zarejestruj"
+                FontSize="18"
+                Clicked="OnRegisterButtonClicked"
+                HorizontalOptions="Fill"
+                Margin="0,20,0,0" />
+
+            <Button 
+                Text="Wróć do logowania"
+                FontSize="16"
+                Clicked="OnBackToLoginClicked"
+                HorizontalOptions="Fill"
+                BackgroundColor="Transparent"
+                TextColor="#512BD4" />
+
+        </VerticalStackLayout>
+    </ScrollView>
 
 </ContentPage>

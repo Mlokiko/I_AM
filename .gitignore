@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Firebase configuration files with secrets
+/I_AM/Services/FirebaseConfig.cs
+/I_AM/Resources/Raw/admin-sdk.json
+*.json
+google-services.json
+GoogleService-Info.plist
+

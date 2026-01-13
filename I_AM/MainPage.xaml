@@ -3,46 +3,68 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="I_AM.MainPage">
 
-
-
     <VerticalStackLayout 
-        VerticalOptions="Center" 
-        HorizontalOptions="Center"
-        Spacing="25">
+        VerticalOptions="Fill" 
+        HorizontalOptions="Fill"
+        Spacing="15"
+        Padding="20">
 
-        <Label 
-        Text="Panel główny"
-        FontSize="32"
-        FontAttributes="Bold"
-        HorizontalOptions="Center" />
+        <!-- Header -->
+        <VerticalStackLayout 
+            Spacing="5"
+            Margin="0,10,0,20">
+            <Label 
+                Text="Panel główny"
+                FontSize="32"
+                FontAttributes="Bold"
+                HorizontalOptions="Center" />
+        </VerticalStackLayout>
 
+        <!-- Main Content -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="10">
+                <Button 
+                    x:Name="MyActivityButton"
+                    Text="Wykonaj codzienną aktywność"
+                    Clicked="OnLoginButtonClicked" 
+                    HorizontalOptions="Fill" />
 
-        <Button 
-            x:Name="MyActivityButton"
-            Text="Wykonaj codzienną aktywność"
-            Clicked="OnLoginButtonClicked" 
-            HorizontalOptions="Center" />
+                <Button 
+                    x:Name="MyCallendarButton"
+                    Text="Kalendarz"
+                    Clicked="OnRegisterButtonClicked" 
+                    HorizontalOptions="Fill" />
 
+                <Button 
+                    x:Name="MySetProtectorButton"
+                    Text="Wyznacz osobę jako swojego opiekuna"
+                    Clicked="OnRegisterButtonClicked" 
+                    HorizontalOptions="Fill" />
+
+                <Button 
+                    x:Name="MyEditQuestionsButton"
+                    Text="Edytuj pytania podpiecznego"
+                    Clicked="OnRegisterButtonClicked" 
+                    HorizontalOptions="Fill" />
+
+                <Button 
+                    x:Name="MyManageAccountButton"
+                    Text="Zarządzaj swoim kontem"
+                    Clicked="OnManageOwnAccountButtonClicked" 
+                    HorizontalOptions="Fill" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Footer - Logout Button -->
         <Button 
-            x:Name="MyCallendarButton"
-            Text="Kalendarz"
-            Clicked="OnRegisterButtonClicked" 
-            HorizontalOptions="Center" />
-        <Button 
-            x:Name="MySetProtectorButton"
-            Text="Wyznacz osobę jako swojego opkiekuna"
-            Clicked="OnRegisterButtonClicked" 
-            HorizontalOptions="Center" />
-        <Button 
-            x:Name="MyEditQuestionsButton"
-            Text="Edytuj pytania podpiecznego"
-            Clicked="OnRegisterButtonClicked" 
-            HorizontalOptions="Center" />
-        <Button 
-            x:Name="MyManageAccountButton"
-            Text="Zarządzaj swoim kontem"
-            Clicked="OnManageOwnAccountButtonClicked" 
-            HorizontalOptions="Center" />
+            x:Name="LogoutButton"
+            Text="Wyloguj się"
+            Clicked="OnLogoutButtonClicked" 
+            HorizontalOptions="Fill"
+            BackgroundColor="#d32f2f"
+            TextColor="White"
+            Margin="0,10,0,0" />
 
     </VerticalStackLayout>
 </ContentPage>
+
