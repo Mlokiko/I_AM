@@ -151,20 +151,36 @@ public class FirestoreService : IFirestoreService
         {
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
             {
+                System.Diagnostics.Debug.WriteLine("? DeleteUserProfile: userId lub idToken s¹ puste");
                 return false;
             }
 
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{userId}?key={FirebaseConfig.WebApiKey}";
+            
+            System.Diagnostics.Debug.WriteLine($"Wysy³anie DELETE request do: {url}");
 
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
 
             var response = await _httpClient.DeleteAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode;
+            System.Diagnostics.Debug.WriteLine($"Delete response status: {response.StatusCode}");
+            System.Diagnostics.Debug.WriteLine($"Delete response body: {responseBody}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"? Profil u¿ytkownika {userId} zosta³ usuniêty z Firestore");
+                return true;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"? B³¹d usuwania profilu. Status: {response.StatusCode}");
+                return false;
+            }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d usuwania profilu: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"? B³¹d usuwania profilu: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
         finally

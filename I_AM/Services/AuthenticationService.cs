@@ -8,6 +8,7 @@ public interface IAuthenticationService
     Task<AuthResult> RegisterAsync(string email, string password);
     Task<AuthResult> LoginAsync(string email, string password);
     Task<bool> LogoutAsync();
+    Task<bool> DeleteAccountAsync();
     Task<string?> GetCurrentUserIdAsync();
     Task<string?> GetCurrentIdTokenAsync();
     Task<string?> GetCurrentEmailAsync();
@@ -257,5 +258,59 @@ public class AuthenticationService : IAuthenticationService
     public async Task<string?> GetCurrentEmailAsync()
     {
         return await Task.FromResult(_currentEmail);
+    }
+
+    /// <summary>
+    /// Usuwa konto u¿ytkownika z Firebase Authentication
+    /// </summary>
+    public async Task<bool> DeleteAccountAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_idToken))
+            {
+                System.Diagnostics.Debug.WriteLine("? B³¹d: brak ID token");
+                return false;
+            }
+
+            // Endpoint do usuwania konta
+            var url = $"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={FirebaseConfig.WebApiKey}";
+            
+            var payload = new { idToken = _idToken };
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine("? Konto usuniête z Firebase Authentication");
+                return true;
+            }
+
+            var errorMessage = "Nie uda³o siê usun¹æ konta";
+            try
+            {
+                var errorJson = JsonDocument.Parse(responseBody);
+                if (errorJson.RootElement.TryGetProperty("error", out var error) &&
+                    error.TryGetProperty("message", out var message))
+                {
+                    errorMessage = message.GetString() ?? errorMessage;
+                }
+            }
+            catch { }
+
+            System.Diagnostics.Debug.WriteLine($"? B³¹d usuwania konta: {errorMessage}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"? B³¹d usuwania konta: {ex.Message}");
+            return false;
+        }
     }
 }
