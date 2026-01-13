@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.NotificationPage"
+             Title="Powiadomienia">
+
+    <VerticalStackLayout Padding="20" Spacing="20" VerticalOptions="FillAndExpand">
+        
+        <Label Text="Powiadomienia" FontSize="32" FontAttributes="Bold" HorizontalOptions="Center" />
+
+        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True" Color="#512BD4" />
+
+        <VerticalStackLayout x:Name="EmptyStateLayout" IsVisible="False" VerticalOptions="CenterAndExpand" HorizontalOptions="Center" Spacing="15">
+            <Label Text="Brak powiadomien" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#333333" />
+            <Label Text="Nie masz zadnych nowych powiadomien." FontSize="16" HorizontalTextAlignment="Center" TextColor="#666666" />
+        </VerticalStackLayout>
+
+        <CollectionView x:Name="NotificationsCollectionView" ItemsSource="{Binding Notifications}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="10" Padding="15" BorderColor="#EEEEEE" CornerRadius="10">
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="#000000" />
+                            <Label Text="{Binding Message}" FontSize="14" TextColor="#666666" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Button x:Name="BackButton" Text="Wroc" Clicked="OnBackClicked" BackgroundColor="#512BD4" TextColor="White" />
+    </VerticalStackLayout>
+
+</ContentPage>

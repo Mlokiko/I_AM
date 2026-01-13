@@ -24,6 +24,9 @@ public class UserProfile
     [JsonPropertyName("sex")]
     public string Sex { get; set; } = string.Empty;
 
+    [JsonPropertyName("phoneNumber")]
+    public string PhoneNumber { get; set; } = string.Empty;
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
@@ -64,6 +67,7 @@ public class FirestoreService : IFirestoreService
                     lastName = new { stringValue = profile.LastName },
                     age = new { integerValue = profile.Age.ToString() },
                     sex = new { stringValue = profile.Sex },
+                    phoneNumber = new { stringValue = profile.PhoneNumber },
                     createdAt = new { timestampValue = profile.CreatedAt.ToString("o") },
                     email = new { stringValue = profile.Email }
                 }
@@ -128,6 +132,7 @@ public class FirestoreService : IFirestoreService
                 LastName = GetStringValue(fields, "lastName"),
                 Age = GetIntValue(fields, "age"),
                 Sex = GetStringValue(fields, "sex"),
+                PhoneNumber = GetStringValue(fields, "phoneNumber"),
                 Email = GetStringValue(fields, "email"),
                 CreatedAt = GetTimestampValue(fields, "createdAt")
             };

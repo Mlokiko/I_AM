@@ -50,6 +50,7 @@ public partial class ManageOwnAccountPage : ContentPage
                 LastNameLabel.Text = profile.LastName ?? "N/A";
                 AgeLabel.Text = profile.Age > 0 ? profile.Age.ToString() : "N/A";
                 SexLabel.Text = profile.Sex ?? "N/A";
+                PhoneNumberLabel.Text = profile.PhoneNumber ?? "N/A";
                 CreatedAtLabel.Text = profile.CreatedAt != DateTime.MinValue 
                     ? profile.CreatedAt.ToString("dd.MM.yyyy HH:mm")
                     : "N/A";
@@ -62,6 +63,7 @@ public partial class ManageOwnAccountPage : ContentPage
                 LastNameLabel.Text = "N/A";
                 AgeLabel.Text = "N/A";
                 SexLabel.Text = "N/A";
+                PhoneNumberLabel.Text = "N/A";
                 CreatedAtLabel.Text = "N/A";
             }
         }

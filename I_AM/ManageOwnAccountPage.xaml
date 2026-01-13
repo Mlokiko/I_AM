@@ -142,6 +142,24 @@
                             HeightRequest="1"
                             Color="#EEEEEE" />
 
+                        <!-- Phone Number Section -->
+                        <VerticalStackLayout Spacing="5">
+                            <Label 
+                                Text="Nr Telefonu"
+                                FontSize="14"
+                                FontAttributes="Bold"
+                                TextColor="#666666" />
+                            <Label 
+                                x:Name="PhoneNumberLabel"
+                                Text="-"
+                                FontSize="16"
+                                TextColor="#000000" />
+                        </VerticalStackLayout>
+
+                        <BoxView 
+                            HeightRequest="1"
+                            Color="#EEEEEE" />
+
                         <!-- Created At Section -->
                         <VerticalStackLayout Spacing="5">
                             <Label 

@@ -24,6 +24,13 @@
         <ScrollView>
             <VerticalStackLayout Spacing="10">
                 <Button 
+                    x:Name="NotificationsButton"
+                    Text="Powiadomienia"
+                    Clicked="OnNotificationsButtonClicked" 
+                    HorizontalOptions="Fill"
+                    BackgroundColor="#FFA500" />
+
+                <Button 
                     x:Name="MyActivityButton"
                     Text="Wykonaj codzienną aktywność"
                     Clicked="OnLoginButtonClicked" 

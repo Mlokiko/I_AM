@@ -34,6 +34,7 @@ public partial class RegisterPage : ContentPage
         var lastName = LastNameEntry.Text?.Trim() ?? string.Empty;
         var ageText = AgeEntry.Text?.Trim() ?? string.Empty;
         var sex = SexPicker.SelectedItem?.ToString() ?? string.Empty;
+        var phoneNumber = PhoneNumberEntry.Text?.Trim() ?? string.Empty;
 
         // Walidacja
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
@@ -54,6 +55,12 @@ public partial class RegisterPage : ContentPage
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            await DisplayAlert("B³¹d", "Numer telefonu jest wymagany", "OK");
+            return;
+        }
+
         button.IsEnabled = false;
 
         var result = await _authService.RegisterAsync(email, password);
@@ -67,6 +74,7 @@ public partial class RegisterPage : ContentPage
                 LastName = lastName,
                 Age = age,
                 Sex = sex,
+                PhoneNumber = phoneNumber,
                 Email = email
             };
 

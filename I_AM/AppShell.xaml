@@ -28,4 +28,15 @@
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
 
+    <ShellContent
+        Title="Powiadomienia"
+        ContentTemplate="{DataTemplate local:NotificationPage}"
+        Route="NotificationPage" />
+
+    <ShellContent
+        Title="Zarządzaj Kontem"
+        ContentTemplate="{DataTemplate local:ManageOwnAccountPage}"
+        Route="ManageOwnAccountPage" />
+
 </Shell>
+

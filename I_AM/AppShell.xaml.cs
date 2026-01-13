@@ -14,6 +14,7 @@ namespace I_AM
             Routing.RegisterRoute(nameof(LoginPage), typeof(LoginPage));
             Routing.RegisterRoute(nameof(InformationPage), typeof(InformationPage));
             Routing.RegisterRoute(nameof(ManageOwnAccountPage), typeof(ManageOwnAccountPage));
+            Routing.RegisterRoute(nameof(NotificationPage), typeof(NotificationPage));
             Routing.RegisterRoute(nameof(LandingPage), typeof(LandingPage));
             Routing.RegisterRoute(nameof(MainPage), typeof(MainPage));
 

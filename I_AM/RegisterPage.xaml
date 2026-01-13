@@ -81,6 +81,17 @@
                 ItemsSource="{Binding SexOptions}"
                 FontSize="16" />
 
+            <Label 
+                Text="Nr Telefonu"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Entry 
+                x:Name="PhoneNumberEntry"
+                Placeholder="+48 123 456 789"
+                Keyboard="Telephone"
+                FontSize="16" />
+
             <Button 
                 Text="Zarejestruj"
                 FontSize="18"

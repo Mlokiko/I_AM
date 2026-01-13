@@ -27,6 +27,11 @@ namespace I_AM
             await Shell.Current.GoToAsync(nameof(ManageOwnAccountPage));
         }
 
+        private async void OnNotificationsButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(NotificationPage));
+        }
+
         private async void OnLogoutButtonClicked(object sender, EventArgs e)
         {
             var result = await DisplayAlert("Potwierdzenie", "Czy na pewno chcesz się wylogować?", "Tak", "Nie");
