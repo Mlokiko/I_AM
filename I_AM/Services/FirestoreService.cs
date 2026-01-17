@@ -32,6 +32,15 @@ public class UserProfile
 
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("isCaregiver")]
+    public bool IsCaregiver { get; set; }
+
+    [JsonPropertyName("caretakersID")]
+    public List<string> CaretakersID { get; set; } = new();
+
+    [JsonPropertyName("caregiversID")]
+    public List<string> CaregiversID { get; set; } = new();
 }
 
 public class FirestoreService : IFirestoreService
@@ -59,22 +68,11 @@ public class FirestoreService : IFirestoreService
             // URL do Firestore REST API
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{userId}?key={FirebaseConfig.WebApiKey}";
 
-            var payload = new
-            {
-                fields = new
-                {
-                    firstName = new { stringValue = profile.FirstName },
-                    lastName = new { stringValue = profile.LastName },
-                    age = new { integerValue = profile.Age.ToString() },
-                    sex = new { stringValue = profile.Sex },
-                    phoneNumber = new { stringValue = profile.PhoneNumber },
-                    createdAt = new { timestampValue = profile.CreatedAt.ToString("o") },
-                    email = new { stringValue = profile.Email }
-                }
-            };
+            // Buduj payload rêcznie jako JSON, aby mieæ pe³n¹ kontrolê nad struktur¹
+            var payloadJson = BuildProfilePayload(profile);
 
             var content = new StringContent(
-                JsonSerializer.Serialize(payload),
+                payloadJson,
                 System.Text.Encoding.UTF8,
                 "application/json"
             );
@@ -83,12 +81,19 @@ public class FirestoreService : IFirestoreService
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
 
             var response = await _httpClient.PatchAsync(url, content);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania profilu. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response: {responseBody}");
+            }
 
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania profilu: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania profilu: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
         finally
@@ -134,7 +139,10 @@ public class FirestoreService : IFirestoreService
                 Sex = GetStringValue(fields, "sex"),
                 PhoneNumber = GetStringValue(fields, "phoneNumber"),
                 Email = GetStringValue(fields, "email"),
-                CreatedAt = GetTimestampValue(fields, "createdAt")
+                CreatedAt = GetTimestampValue(fields, "createdAt"),
+                IsCaregiver = GetBoolValue(fields, "isCaregiver"),
+                CaretakersID = GetStringArray(fields, "caretakersID"),
+                CaregiversID = GetStringArray(fields, "caregiversID")
             };
 
             return profile;
@@ -225,5 +233,138 @@ public class FirestoreService : IFirestoreService
             }
         }
         return DateTime.MinValue;
+    }
+
+    private static bool GetBoolValue(JsonElement fields, string key)
+    {
+        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("booleanValue", out var value))
+        {
+            return value.GetBoolean();
+        }
+        return false;
+    }
+
+    private static List<string> GetStringArray(JsonElement fields, string key)
+    {
+        var result = new List<string>();
+        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("arrayValue", out var arrayValue))
+        {
+            if (arrayValue.TryGetProperty("values", out var values))
+            {
+                foreach (var item in values.EnumerateArray())
+                {
+                    if (item.TryGetProperty("stringValue", out var stringValue))
+                    {
+                        result.Add(stringValue.GetString() ?? string.Empty);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    private static string BuildProfilePayload(UserProfile profile)
+    {
+        using (var stream = new System.IO.MemoryStream())
+        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("fields");
+            writer.WriteStartObject();
+
+            // firstName
+            writer.WritePropertyName("firstName");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.FirstName);
+            writer.WriteEndObject();
+
+            // lastName
+            writer.WritePropertyName("lastName");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.LastName);
+            writer.WriteEndObject();
+
+            // age
+            writer.WritePropertyName("age");
+            writer.WriteStartObject();
+            writer.WriteString("integerValue", profile.Age.ToString());
+            writer.WriteEndObject();
+
+            // sex
+            writer.WritePropertyName("sex");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.Sex);
+            writer.WriteEndObject();
+
+            // phoneNumber
+            writer.WritePropertyName("phoneNumber");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.PhoneNumber);
+            writer.WriteEndObject();
+
+            // email
+            writer.WritePropertyName("email");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.Email);
+            writer.WriteEndObject();
+
+            // createdAt
+            writer.WritePropertyName("createdAt");
+            writer.WriteStartObject();
+            writer.WriteString("timestampValue", profile.CreatedAt.ToString("o"));
+            writer.WriteEndObject();
+
+            // isCaregiver
+            writer.WritePropertyName("isCaregiver");
+            writer.WriteStartObject();
+            writer.WriteBoolean("booleanValue", profile.IsCaregiver);
+            writer.WriteEndObject();
+
+            // caretakersID
+            writer.WritePropertyName("caretakersID");
+            writer.WriteStartObject();
+            writer.WritePropertyName("arrayValue");
+            writer.WriteStartObject();
+            if (profile.CaretakersID.Count > 0)
+            {
+                writer.WritePropertyName("values");
+                writer.WriteStartArray();
+                foreach (var id in profile.CaretakersID)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("stringValue", id);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+            }
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            // caregiversID
+            writer.WritePropertyName("caregiversID");
+            writer.WriteStartObject();
+            writer.WritePropertyName("arrayValue");
+            writer.WriteStartObject();
+            if (profile.CaregiversID.Count > 0)
+            {
+                writer.WritePropertyName("values");
+                writer.WriteStartArray();
+                foreach (var id in profile.CaregiversID)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("stringValue", id);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+            }
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.Flush();
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
     }
 }

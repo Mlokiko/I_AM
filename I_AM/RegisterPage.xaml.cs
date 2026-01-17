@@ -7,6 +7,7 @@ public partial class RegisterPage : ContentPage
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
     public List<string> SexOptions { get; set; }
+    public List<string> AccountTypeOptions { get; set; }
 
     public RegisterPage()
     {
@@ -21,6 +22,13 @@ public partial class RegisterPage : ContentPage
             "Inne",
             "Nie chcê podawaæ"
         };
+
+        AccountTypeOptions = new List<string>
+        {
+            "Podopieczny",
+            "Opiekun"
+        };
+
         this.BindingContext = this;
     }
 
@@ -35,6 +43,7 @@ public partial class RegisterPage : ContentPage
         var ageText = AgeEntry.Text?.Trim() ?? string.Empty;
         var sex = SexPicker.SelectedItem?.ToString() ?? string.Empty;
         var phoneNumber = PhoneNumberEntry.Text?.Trim() ?? string.Empty;
+        var accountType = AccountTypePicker.SelectedItem?.ToString() ?? string.Empty;
 
         // Walidacja
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
@@ -61,6 +70,12 @@ public partial class RegisterPage : ContentPage
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(accountType))
+        {
+            await DisplayAlert("B³¹d", "Wybranie typu konta jest wymagane", "OK");
+            return;
+        }
+
         button.IsEnabled = false;
 
         var result = await _authService.RegisterAsync(email, password);
@@ -68,6 +83,7 @@ public partial class RegisterPage : ContentPage
         if (result.Success)
         {
             // Zapisz profil u¿ytkownika do Firestore
+            var isCaregiver = accountType == "Opiekun";
             var userProfile = new UserProfile
             {
                 FirstName = firstName,
@@ -75,7 +91,10 @@ public partial class RegisterPage : ContentPage
                 Age = age,
                 Sex = sex,
                 PhoneNumber = phoneNumber,
-                Email = email
+                Email = email,
+                IsCaregiver = isCaregiver,
+                CaretakersID = new(),
+                CaregiversID = new()
             };
 
             var saveSuccess = await _firestoreService.SaveUserProfileAsync(

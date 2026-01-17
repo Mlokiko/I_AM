@@ -54,6 +54,7 @@ public partial class ManageOwnAccountPage : ContentPage
                 CreatedAtLabel.Text = profile.CreatedAt != DateTime.MinValue 
                     ? profile.CreatedAt.ToString("dd.MM.yyyy HH:mm")
                     : "N/A";
+                UserTypeLabel.Text = profile.IsCaregiver ? "Opiekun" : "Podopieczny";
             }
             else
             {
@@ -65,6 +66,7 @@ public partial class ManageOwnAccountPage : ContentPage
                 SexLabel.Text = "N/A";
                 PhoneNumberLabel.Text = "N/A";
                 CreatedAtLabel.Text = "N/A";
+                UserTypeLabel.Text = "N/A";
             }
         }
         catch (Exception ex)

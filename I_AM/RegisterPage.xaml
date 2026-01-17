@@ -92,6 +92,17 @@
                 Keyboard="Telephone"
                 FontSize="16" />
 
+            <Label 
+                Text="Typ Konta"
+                FontSize="16"
+                FontAttributes="Bold"
+                Margin="0,10,0,5"/>
+            <Picker 
+                x:Name="AccountTypePicker"
+                Title="Wybierz typ konta"
+                ItemsSource="{Binding AccountTypeOptions}"
+                FontSize="16" />
+
             <Button 
                 Text="Zarejestruj"
                 FontSize="18"
