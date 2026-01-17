@@ -44,8 +44,8 @@
 
                 <Button 
                     x:Name="MySetProtectorButton"
-                    Text="Wyznacz osobę jako swojego opiekuna"
-                    Clicked="OnRegisterButtonClicked" 
+                    Text="Zarządzaj Opiekunami"
+                    Clicked="OnManagCaregiversButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 

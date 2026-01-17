@@ -1,16 +1,21 @@
 using System.Collections.ObjectModel;
+using I_AM.Services;
 
 namespace I_AM;
 
 public partial class NotificationPage : ContentPage
 {
-    public ObservableCollection<Notification> Notifications { get; set; }
+    public ObservableCollection<NotificationItem> Notifications { get; set; }
+    private readonly IAuthenticationService _authService;
+    private readonly IFirestoreService _firestoreService;
 
     public NotificationPage()
     {
         InitializeComponent();
-        Notifications = new ObservableCollection<Notification>();
+        Notifications = new ObservableCollection<NotificationItem>();
         BindingContext = this;
+        _authService = ServiceHelper.GetService<IAuthenticationService>();
+        _firestoreService = ServiceHelper.GetService<IFirestoreService>();
     }
 
     protected override async void OnAppearing()
@@ -28,17 +33,39 @@ public partial class NotificationPage : ContentPage
             EmptyStateLayout.IsVisible = false;
             NotificationsCollectionView.IsVisible = true;
 
-            // Symuluj ³adowanie danych
-            await Task.Delay(500);
+            Notifications.Clear();
 
-            // Tutaj mo¿esz dodaæ logikê ³adowania powiadomieñ z serwera/bazy danych
-            // Na razie jest pusta lista - brak powiadomieñ
+            var userId = await _authService.GetCurrentUserIdAsync();
+            var idToken = await _authService.GetCurrentIdTokenAsync();
 
-            if (Notifications.Count == 0)
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
             {
-                // Poka¿ pusty stan
-                NotificationsCollectionView.IsVisible = false;
-                EmptyStateLayout.IsVisible = true;
+                ShowEmpty();
+                return;
+            }
+
+            // Pobierz zaproszenia do opiekunów
+            var invitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
+
+            if (invitations.Count == 0)
+            {
+                ShowEmpty();
+                return;
+            }
+
+            foreach (var invitation in invitations)
+            {
+                Notifications.Add(new NotificationItem
+                {
+                    Id = invitation.Id,
+                    Title = $"Zaproszenie od {invitation.FromUserName}",
+                    Message = $"{invitation.FromUserName} chce byæ Twoim opiekunem",
+                    CreatedAt = invitation.CreatedAt,
+                    Type = "caregiver_invitation",
+                    InvitationId = invitation.Id,
+                    CaregiverId = invitation.FromUserId,
+                    CaregiverEmail = invitation.ToUserEmail
+                });
             }
         }
         catch (Exception ex)
@@ -52,6 +79,12 @@ public partial class NotificationPage : ContentPage
         }
     }
 
+    private void ShowEmpty()
+    {
+        NotificationsCollectionView.IsVisible = false;
+        EmptyStateLayout.IsVisible = true;
+    }
+
     private async void OnRefreshClicked(object sender, EventArgs e)
     {
         await LoadNotificationsAsync();
@@ -61,10 +94,128 @@ public partial class NotificationPage : ContentPage
     {
         await Shell.Current.GoToAsync("..");
     }
+
+    private async void OnAcceptButtonClicked(object sender, EventArgs e)
+    {
+        if (sender is Button button && button.BindingContext is NotificationItem notification)
+        {
+            try
+            {
+                button.IsEnabled = false;
+
+                var userId = await _authService.GetCurrentUserIdAsync();
+                var idToken = await _authService.GetCurrentIdTokenAsync();
+
+                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
+                {
+                    await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ danych u¿ytkownika", "OK");
+                    return;
+                }
+
+                var success = await _firestoreService.AcceptCaregiverInvitationAsync(
+                    userId,
+                    notification.InvitationId,
+                    notification.CaregiverId,
+                    idToken
+                );
+
+                if (success)
+                {
+                    await DisplayAlert("Sukces", "Zaproszenie zaakceptowane!", "OK");
+                    Notifications.Remove(notification);
+                    
+                    if (Notifications.Count == 0)
+                    {
+                        ShowEmpty();
+                    }
+                }
+                else
+                {
+                    await DisplayAlert("B³¹d", "Nie uda³o siê zaakceptowaæ zaproszenia", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
+            }
+            finally
+            {
+                if (sender is Button btn)
+                {
+                    btn.IsEnabled = true;
+                }
+            }
+        }
+    }
+
+    private async void OnRejectButtonClicked(object sender, EventArgs e)
+    {
+        if (sender is Button button && button.BindingContext is NotificationItem notification)
+        {
+            try
+            {
+                button.IsEnabled = false;
+
+                var userId = await _authService.GetCurrentUserIdAsync();
+                var idToken = await _authService.GetCurrentIdTokenAsync();
+
+                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
+                {
+                    await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ danych u¿ytkownika", "OK");
+                    return;
+                }
+
+                var success = await _firestoreService.RejectCaregiverInvitationAsync(
+                    userId,
+                    notification.InvitationId,
+                    idToken
+                );
+
+                if (success)
+                {
+                    await DisplayAlert("Sukces", "Zaproszenie odrzucone", "OK");
+                    Notifications.Remove(notification);
+
+                    if (Notifications.Count == 0)
+                    {
+                        ShowEmpty();
+                    }
+                }
+                else
+                {
+                    await DisplayAlert("B³¹d", "Nie uda³o siê odrzuciæ zaproszenia", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
+            }
+            finally
+            {
+                if (sender is Button btn)
+                {
+                    btn.IsEnabled = true;
+                }
+            }
+        }
+    }
+}
+
+public class NotificationItem
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Title { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public bool IsRead { get; set; } = false;
+    public string Type { get; set; } = "info"; // info, warning, error, success, caregiver_invitation
+    public string InvitationId { get; set; } = string.Empty;
+    public string CaregiverId { get; set; } = string.Empty;
+    public string CaregiverEmail { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Model powiadomienia
+/// Stary model - pozostawiony dla kompatybilnoœci
 /// </summary>
 public class Notification
 {
@@ -73,5 +224,5 @@ public class Notification
     public string Message { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public bool IsRead { get; set; } = false;
-    public string Type { get; set; } = "info"; // info, warning, error, success
+    public string Type { get; set; } = "info";
 }

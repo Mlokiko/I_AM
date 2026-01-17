@@ -8,6 +8,14 @@ public interface IFirestoreService
     Task<bool> SaveUserProfileAsync(string userId, UserProfile profile, string idToken);
     Task<UserProfile?> GetUserProfileAsync(string userId, string idToken);
     Task<bool> DeleteUserProfileAsync(string userId, string idToken);
+    Task<bool> SaveUserPublicProfileAsync(string userId, UserPublicProfile profile, string idToken);
+    Task<(UserPublicProfile? profile, string? userId)> GetUserPublicProfileByEmailAsync(string email, string idToken);
+    Task<bool> SaveCaregiverInvitationAsync(string invitationId, CaregiverInvitation invitation, string idToken);
+    Task<List<CaregiverInvitation>> GetPendingInvitationsAsync(string userId, string idToken);
+    Task<bool> AcceptCaregiverInvitationAsync(string userId, string invitationId, string caregiverId, string idToken);
+    Task<bool> RejectCaregiverInvitationAsync(string userId, string invitationId, string idToken);
+    Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken);
+    Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken);
 }
 
 public class UserProfile
@@ -41,6 +49,72 @@ public class UserProfile
 
     [JsonPropertyName("caregiversID")]
     public List<string> CaregiversID { get; set; } = new();
+}
+
+public class UserPublicProfile
+{
+    [JsonPropertyName("userId")]
+    public string UserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("firstName")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [JsonPropertyName("lastName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CaregiverInvitation
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("fromUserId")]
+    public string FromUserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("toUserId")]
+    public string ToUserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("toUserEmail")]
+    public string ToUserEmail { get; set; } = string.Empty;
+
+    [JsonPropertyName("fromUserName")]
+    public string FromUserName { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "pending"; // pending, accepted, rejected
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("respondedAt")]
+    public DateTime? RespondedAt { get; set; }
+}
+
+public class CaregiverInfo
+{
+    [JsonPropertyName("userId")]
+    public string UserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("firstName")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [JsonPropertyName("lastName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "accepted"; // accepted, pending
+
+    [JsonPropertyName("addedAt")]
+    public DateTime AddedAt { get; set; }
 }
 
 public class FirestoreService : IFirestoreService
@@ -158,6 +232,572 @@ public class FirestoreService : IFirestoreService
         }
     }
 
+    public async Task<(UserProfile? profile, string? userId)> GetUserProfileByEmailAsync(string email, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(idToken))
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: email lub idToken s¹ puste");
+                return (null, null);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Szukam u¿ytkownika z emailem: {email}");
+
+            // Spróbuj najpierw z kolekcji email_to_user_id (jeœli istnieje)
+            var emailMapUrl = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/email_to_user_id/{email}?key={FirebaseConfig.WebApiKey}";
+
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Próbujê znaleŸæ userId w email_to_user_id");
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var emailMapResponse = await _httpClient.GetAsync(emailMapUrl);
+            
+            if (emailMapResponse.IsSuccessStatusCode)
+            {
+                var emailMapBody = await emailMapResponse.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Znaleziono w email_to_user_id");
+
+                var emailMapDoc = JsonDocument.Parse(emailMapBody);
+                if (emailMapDoc.RootElement.TryGetProperty("fields", out var mapFields) &&
+                    mapFields.TryGetProperty("userId", out var userIdProp) &&
+                    userIdProp.TryGetProperty("stringValue", out var userIdValue))
+                {
+                    var userId = userIdValue.GetString();
+                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Uzyskano userId z email_to_user_id: {userId}");
+
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        // Teraz pobierz profil u¿ytkownika
+                        var profile = await GetUserProfileAsync(userId, idToken);
+                        if (profile != null)
+                        {
+                            return (profile, userId);
+                        }
+                    }
+                }
+            }
+
+            // Jeœli nie znaleziono w email_to_user_id, przeszukaj wszystkich u¿ytkowników
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Przeszukujê wszystkich u¿ytkowników");
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users?key={FirebaseConfig.WebApiKey}";
+
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: URL: {url}");
+
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Response Status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: ¯¹danie siê nie powiod³o. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Response Body: {responseBody}");
+                return (null, null);
+            }
+
+            var jsonDocument = JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("documents", out var documents))
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Brak 'documents' w odpowiedzi");
+                return (null, null);
+            }
+
+            var docsCount = 0;
+            try { docsCount = documents.GetArrayLength(); } catch { }
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Liczba dokumentów: {docsCount}");
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                {
+                    continue;
+                }
+
+                var docEmail = GetStringValue(fields, "email");
+                
+                if (!string.IsNullOrEmpty(docEmail))
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Sprawdzam email: {docEmail} vs {email}");
+                }
+
+                if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var userId = GetDocumentId(doc);
+                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
+
+                    var profile = new UserProfile
+                    {
+                        FirstName = GetStringValue(fields, "firstName"),
+                        LastName = GetStringValue(fields, "lastName"),
+                        Age = GetIntValue(fields, "age"),
+                        Sex = GetStringValue(fields, "sex"),
+                        PhoneNumber = GetStringValue(fields, "phoneNumber"),
+                        Email = docEmail,
+                        CreatedAt = GetTimestampValue(fields, "createdAt"),
+                        IsCaregiver = GetBoolValue(fields, "isCaregiver"),
+                        CaretakersID = GetStringArray(fields, "caretakersID"),
+                        CaregiversID = GetStringArray(fields, "caregiversID")
+                    };
+                    return (profile, userId);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Nie znaleziono u¿ytkownika z emailem: {email}");
+            return (null, null);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync - B³¹d: {ex.Message}\n{ex.StackTrace}");
+            return (null, null);
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> SaveCaregiverInvitationAsync(string invitationId, CaregiverInvitation invitation, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(invitationId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
+
+            var payloadJson = BuildInvitationPayload(invitation);
+
+            var content = new StringContent(
+                payloadJson,
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.PatchAsync(url, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania zaproszenia. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response: {responseBody}");
+            }
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania zaproszenia: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<List<CaregiverInvitation>> GetPendingInvitationsAsync(string userId, string idToken)
+    {
+        var invitations = new List<CaregiverInvitation>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return invitations;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return invitations;
+            }
+
+            var jsonDocument = JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("documents", out var documents))
+            {
+                return invitations;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var toUserId = GetStringValue(fields, "toUserId");
+                var status = GetStringValue(fields, "status");
+
+                if (toUserId == userId && status == "pending")
+                {
+                    var invitation = new CaregiverInvitation
+                    {
+                        Id = GetDocumentId(doc),
+                        FromUserId = GetStringValue(fields, "fromUserId"),
+                        ToUserId = toUserId,
+                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
+                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        Status = status,
+                        CreatedAt = GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                    };
+                    invitations.Add(invitation);
+                }
+            }
+
+            return invitations;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d pobierania zaproszeñ: {ex.Message}");
+            return invitations;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> AcceptCaregiverInvitationAsync(string userId, string invitationId, string caregiverId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            // 1. Pobierz profil u¿ytkownika
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            if (userProfile == null)
+                return false;
+
+            // 2. Dodaj caregiverId do caregiversID
+            if (!userProfile.CaregiversID.Contains(caregiverId))
+            {
+                userProfile.CaregiversID.Add(caregiverId);
+            }
+
+            // 3. Pobierz profil opiekuna
+            var caregiverProfile = await GetUserProfileAsync(caregiverId, idToken);
+            if (caregiverProfile == null)
+                return false;
+
+            // 4. Dodaj userId do caretakersID
+            if (!caregiverProfile.CaretakersID.Contains(userId))
+            {
+                caregiverProfile.CaretakersID.Add(userId);
+            }
+
+            // 5. Aktualizuj obydwa profile
+            var userSaved = await SaveUserProfileAsync(userId, userProfile, idToken);
+            var caregiverSaved = await SaveUserProfileAsync(caregiverId, caregiverProfile, idToken);
+
+            if (!userSaved || !caregiverSaved)
+                return false;
+
+            // 6. Aktualizuj status zaproszenia
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
+
+            var invitation = new CaregiverInvitation
+            {
+                Id = invitationId,
+                FromUserId = caregiverId,
+                ToUserId = userId,
+                Status = "accepted",
+                RespondedAt = DateTime.UtcNow
+            };
+
+            var payloadJson = BuildInvitationPayload(invitation);
+            var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.PatchAsync(url, content);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d akceptowania zaproszenia: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> RejectCaregiverInvitationAsync(string userId, string invitationId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(invitationId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
+
+            var invitation = new CaregiverInvitation
+            {
+                Id = invitationId,
+                Status = "rejected",
+                RespondedAt = DateTime.UtcNow
+            };
+
+            var payloadJson = BuildInvitationPayload(invitation);
+            var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.PatchAsync(url, content);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d odrzucania zaproszenia: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caregiverId))
+            {
+                return false;
+            }
+
+            // 1. Pobierz profil u¿ytkownika
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            if (userProfile == null)
+                return false;
+
+            // 2. Usuñ caregiverId z caregiversID
+            userProfile.CaregiversID.Remove(caregiverId);
+
+            // 3. Pobierz profil opiekuna
+            var caregiverProfile = await GetUserProfileAsync(caregiverId, idToken);
+            if (caregiverProfile == null)
+                return false;
+
+            // 4. Usuñ userId z caretakersID
+            caregiverProfile.CaretakersID.Remove(userId);
+
+            // 5. Aktualizuj obydwa profile
+            var userSaved = await SaveUserProfileAsync(userId, userProfile, idToken);
+            var caregiverSaved = await SaveUserProfileAsync(caregiverId, caregiverProfile, idToken);
+
+            return userSaved && caregiverSaved;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d usuwania opiekuna: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken)
+    {
+        var caregivers = new List<CaregiverInfo>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return caregivers;
+            }
+
+            // 1. Pobierz profil u¿ytkownika aby uzyskaæ listê caregiverIDs
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            if (userProfile == null || userProfile.CaregiversID.Count == 0)
+            {
+                return caregivers;
+            }
+
+            // 2. Dla ka¿dego caregiverId pobierz jego profil
+            foreach (var caregiverId in userProfile.CaregiversID)
+            {
+                var profile = await GetUserProfileAsync(caregiverId, idToken);
+                if (profile != null)
+                {
+                    caregivers.Add(new CaregiverInfo
+                    {
+                        UserId = caregiverId,
+                        Email = profile.Email,
+                        FirstName = profile.FirstName,
+                        LastName = profile.LastName,
+                        Status = "accepted",
+                        AddedAt = profile.CreatedAt
+                    });
+                }
+            }
+
+            return caregivers;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d pobierania opiekunów: {ex.Message}");
+            return caregivers;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> SaveUserPublicProfileAsync(string userId, UserPublicProfile profile, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/user_public_profiles/{userId}?key={FirebaseConfig.WebApiKey}";
+
+            var payloadJson = BuildPublicProfilePayload(profile);
+
+            var content = new StringContent(
+                payloadJson,
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.PatchAsync(url, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania publicznego profilu. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response: {responseBody}");
+            }
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d zapisywania publicznego profilu: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<(UserPublicProfile? profile, string? userId)> GetUserPublicProfileByEmailAsync(string email, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(idToken))
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: email lub idToken s¹ puste");
+                return (null, null);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Szukam u¿ytkownika z emailem: {email}");
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/user_public_profiles?key={FirebaseConfig.WebApiKey}";
+
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: URL: {url}");
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Response Status: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: ¯¹danie siê nie powiod³o. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Response Body: {responseBody}");
+                return (null, null);
+            }
+
+            var jsonDocument = JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("documents", out var documents))
+            {
+                System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Brak 'documents' w odpowiedzi");
+                return (null, null);
+            }
+
+            var docsCount = 0;
+            try { docsCount = documents.GetArrayLength(); } catch { }
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Liczba dokumentów: {docsCount}");
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                {
+                    continue;
+                }
+
+                var docEmail = GetStringValue(fields, "email");
+
+                if (!string.IsNullOrEmpty(docEmail))
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Sprawdzam email: {docEmail} vs {email}");
+                }
+
+                if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var userId = GetDocumentId(doc);
+                    System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
+
+                    var profile = new UserPublicProfile
+                    {
+                        UserId = userId,
+                        Email = docEmail,
+                        FirstName = GetStringValue(fields, "firstName"),
+                        LastName = GetStringValue(fields, "lastName"),
+                        CreatedAt = GetTimestampValue(fields, "createdAt")
+                    };
+                    return (profile, userId);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Nie znaleziono u¿ytkownika z emailem: {email}");
+            return (null, null);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync - B³¹d: {ex.Message}\n{ex.StackTrace}");
+            return (null, null);
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
     public async Task<bool> DeleteUserProfileAsync(string userId, string idToken)
     {
         try
@@ -261,6 +901,151 @@ public class FirestoreService : IFirestoreService
             }
         }
         return result;
+    }
+
+    private static DateTime? GetTimestampValueNullable(JsonElement fields, string key)
+    {
+        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("timestampValue", out var value))
+        {
+            if (DateTime.TryParse(value.GetString(), out var result))
+            {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private static string GetDocumentId(JsonElement document)
+    {
+        if (document.TryGetProperty("name", out var nameElement))
+        {
+            var name = nameElement.GetString() ?? string.Empty;
+            var parts = name.Split('/');
+            return parts.Length > 0 ? parts[^1] : string.Empty;
+        }
+        return string.Empty;
+    }
+
+    private static string BuildInvitationPayload(CaregiverInvitation invitation)
+    {
+        using (var stream = new System.IO.MemoryStream())
+        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("fields");
+            writer.WriteStartObject();
+
+            if (!string.IsNullOrEmpty(invitation.Id))
+            {
+                writer.WritePropertyName("id");
+                writer.WriteStartObject();
+                writer.WriteString("stringValue", invitation.Id);
+                writer.WriteEndObject();
+            }
+
+            if (!string.IsNullOrEmpty(invitation.FromUserId))
+            {
+                writer.WritePropertyName("fromUserId");
+                writer.WriteStartObject();
+                writer.WriteString("stringValue", invitation.FromUserId);
+                writer.WriteEndObject();
+            }
+
+            if (!string.IsNullOrEmpty(invitation.ToUserId))
+            {
+                writer.WritePropertyName("toUserId");
+                writer.WriteStartObject();
+                writer.WriteString("stringValue", invitation.ToUserId);
+                writer.WriteEndObject();
+            }
+
+            if (!string.IsNullOrEmpty(invitation.ToUserEmail))
+            {
+                writer.WritePropertyName("toUserEmail");
+                writer.WriteStartObject();
+                writer.WriteString("stringValue", invitation.ToUserEmail);
+                writer.WriteEndObject();
+            }
+
+            if (!string.IsNullOrEmpty(invitation.FromUserName))
+            {
+                writer.WritePropertyName("fromUserName");
+                writer.WriteStartObject();
+                writer.WriteString("stringValue", invitation.FromUserName);
+                writer.WriteEndObject();
+            }
+
+            writer.WritePropertyName("status");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", invitation.Status);
+            writer.WriteEndObject();
+
+            writer.WritePropertyName("createdAt");
+            writer.WriteStartObject();
+            writer.WriteString("timestampValue", invitation.CreatedAt.ToString("o"));
+            writer.WriteEndObject();
+
+            if (invitation.RespondedAt.HasValue)
+            {
+                writer.WritePropertyName("respondedAt");
+                writer.WriteStartObject();
+                writer.WriteString("timestampValue", invitation.RespondedAt.Value.ToString("o"));
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.Flush();
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
+    }
+
+    private static string BuildPublicProfilePayload(UserPublicProfile profile)
+    {
+        using (var stream = new System.IO.MemoryStream())
+        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("fields");
+            writer.WriteStartObject();
+
+            // userId
+            writer.WritePropertyName("userId");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.UserId);
+            writer.WriteEndObject();
+
+            // email
+            writer.WritePropertyName("email");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.Email);
+            writer.WriteEndObject();
+
+            // firstName
+            writer.WritePropertyName("firstName");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.FirstName);
+            writer.WriteEndObject();
+
+            // lastName
+            writer.WritePropertyName("lastName");
+            writer.WriteStartObject();
+            writer.WriteString("stringValue", profile.LastName);
+            writer.WriteEndObject();
+
+            // createdAt
+            writer.WritePropertyName("createdAt");
+            writer.WriteStartObject();
+            writer.WriteString("timestampValue", profile.CreatedAt.ToString("o"));
+            writer.WriteEndObject();
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.Flush();
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
     }
 
     private static string BuildProfilePayload(UserProfile profile)

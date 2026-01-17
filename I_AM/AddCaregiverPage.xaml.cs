@@ -1,0 +1,250 @@
+using System.Collections.ObjectModel;
+using I_AM.Services;
+
+namespace I_AM;
+
+public partial class AddCaregiverPage : ContentPage
+{
+    private readonly IAuthenticationService _authService;
+    private readonly IFirestoreService _firestoreService;
+    public ObservableCollection<CaregiverInfo> Caregivers { get; set; }
+
+    public AddCaregiverPage()
+    {
+        InitializeComponent();
+        Caregivers = new ObservableCollection<CaregiverInfo>();
+        BindingContext = this;
+        _authService = ServiceHelper.GetService<IAuthenticationService>();
+        _firestoreService = ServiceHelper.GetService<IFirestoreService>();
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await LoadCaregiversAsync();
+    }
+
+    private async Task LoadCaregiversAsync()
+    {
+        try
+        {
+            CaregiversLoadingIndicator.IsRunning = true;
+            CaregiversLoadingIndicator.IsVisible = true;
+            ErrorLabel.IsVisible = false;
+            Caregivers.Clear();
+
+            var userId = await _authService.GetCurrentUserIdAsync();
+            var idToken = await _authService.GetCurrentIdTokenAsync();
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
+            {
+                ShowError("B³¹d: Nie mo¿na za³adowaæ danych u¿ytkownika");
+                return;
+            }
+
+            // Pobierz listê opiekunów
+            var caregivers = await _firestoreService.GetCaregiversAsync(userId, idToken);
+
+            if (caregivers.Count == 0)
+            {
+                NoCaregiversLabel.IsVisible = true;
+            }
+            else
+            {
+                NoCaregiversLabel.IsVisible = false;
+                foreach (var caregiver in caregivers)
+                {
+                    Caregivers.Add(caregiver);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"B³¹d podczas ³adowania opiekunów: {ex.Message}");
+        }
+        finally
+        {
+            CaregiversLoadingIndicator.IsRunning = false;
+            CaregiversLoadingIndicator.IsVisible = false;
+        }
+    }
+
+    private async void OnAddCaregiverClicked(object sender, EventArgs e)
+    {
+        if (!(sender is Button button)) return;
+
+        var caregiverEmail = CaregiverEmailEntry.Text?.Trim() ?? string.Empty;
+
+        // Walidacja
+        if (string.IsNullOrWhiteSpace(caregiverEmail))
+        {
+            await DisplayAlert("B³¹d", "Email opiekuna jest wymagany", "OK");
+            return;
+        }
+
+        if (!caregiverEmail.Contains("@"))
+        {
+            await DisplayAlert("B³¹d", "Podaj prawid³owy email", "OK");
+            return;
+        }
+
+        button.IsEnabled = false;
+        LoadingIndicator.IsRunning = true;
+        LoadingIndicator.IsVisible = true;
+        ErrorLabel.IsVisible = false;
+
+        try
+        {
+            var currentUserId = await _authService.GetCurrentUserIdAsync();
+            var idToken = await _authService.GetCurrentIdTokenAsync();
+            var currentUserEmail = await _authService.GetCurrentEmailAsync();
+
+            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Current User ID: {currentUserId}");
+            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Szukany email: {caregiverEmail}");
+
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(idToken))
+            {
+                ShowError("B³¹d: Nie mo¿na za³adowaæ danych u¿ytkownika");
+                return;
+            }
+
+            // Zapobiegaj dodaniu siebie
+            if (caregiverEmail.Equals(currentUserEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                await DisplayAlert("B³¹d", "Nie mo¿esz dodaæ siebie jako opiekuna", "OK");
+                return;
+            }
+
+            // 1. Pobierz profil u¿ytkownika po email
+            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Wywo³ywam GetUserPublicProfileByEmailAsync");
+            var (caregiverPublicProfile, caregiverId) = await _firestoreService.GetUserPublicProfileByEmailAsync(caregiverEmail, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Wynik - Profile: {caregiverPublicProfile != null}, UserId: {caregiverId}");
+
+            if (caregiverPublicProfile == null || string.IsNullOrEmpty(caregiverId))
+            {
+                await DisplayAlert("B³¹d", "U¿ytkownik z takim emailem nie istnieje", "OK");
+                return;
+            }
+
+            // 2. Pobierz ID opiekuna
+            // Ju¿ go mamy w caregiverId
+
+            // 3. Stwórz zaproszenie
+            var invitationId = Guid.NewGuid().ToString();
+            var currentUserProfile = await _firestoreService.GetUserProfileAsync(currentUserId, idToken);
+
+            if (currentUserProfile == null)
+            {
+                await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ Twojego profilu", "OK");
+                return;
+            }
+
+            var invitation = new CaregiverInvitation
+            {
+                Id = invitationId,
+                FromUserId = currentUserId,
+                ToUserId = caregiverId,
+                ToUserEmail = caregiverEmail,
+                FromUserName = $"{currentUserProfile.FirstName} {currentUserProfile.LastName}",
+                Status = "pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // 4. Zapisz zaproszenie
+            var saved = await _firestoreService.SaveCaregiverInvitationAsync(invitationId, invitation, idToken);
+
+            if (saved)
+            {
+                await DisplayAlert("Sukces", $"Zaproszenie wys³ane do {caregiverEmail}", "OK");
+                CaregiverEmailEntry.Text = string.Empty;
+            }
+            else
+            {
+                ShowError("Nie uda³o siê wys³aæ zaproszenia");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"B³¹d: {ex.Message}");
+        }
+        finally
+        {
+            LoadingIndicator.IsRunning = false;
+            LoadingIndicator.IsVisible = false;
+            button.IsEnabled = true;
+        }
+    }
+
+    private async void OnRemoveCaregiverClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button button) return;
+
+        var caregiver = button.BindingContext as CaregiverInfo;
+        if (caregiver == null) return;
+
+        var result = await DisplayAlert(
+            "Potwierdzenie",
+            $"Czy na pewno chcesz usun¹æ {caregiver.FirstName} {caregiver.LastName} z opiekunów?",
+            "Tak",
+            "Nie"
+        );
+
+        if (!result) return;
+
+        try
+        {
+            button.IsEnabled = false;
+            LoadingIndicator.IsRunning = true;
+            LoadingIndicator.IsVisible = true;
+
+            var userId = await _authService.GetCurrentUserIdAsync();
+            var idToken = await _authService.GetCurrentIdTokenAsync();
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
+            {
+                await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ danych u¿ytkownika", "OK");
+                return;
+            }
+
+            var success = await _firestoreService.RemoveCaregiverAsync(userId, caregiver.UserId, idToken);
+
+            if (success)
+            {
+                Caregivers.Remove(caregiver);
+                
+                if (Caregivers.Count == 0)
+                {
+                    NoCaregiversLabel.IsVisible = true;
+                }
+
+                await DisplayAlert("Sukces", "Opiekun zosta³ usuniêty", "OK");
+            }
+            else
+            {
+                await DisplayAlert("B³¹d", "Nie uda³o siê usun¹æ opiekuna", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
+        }
+        finally
+        {
+            LoadingIndicator.IsRunning = false;
+            LoadingIndicator.IsVisible = false;
+            button.IsEnabled = true;
+        }
+    }
+
+    private async void OnBackClicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("..");
+    }
+
+    private void ShowError(string message)
+    {
+        ErrorLabel.Text = message;
+        ErrorLabel.IsVisible = true;
+    }
+}

@@ -27,6 +27,11 @@ namespace I_AM
             await Shell.Current.GoToAsync(nameof(ManageOwnAccountPage));
         }
 
+        private async void OnManagCaregiversButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(AddCaregiverPage));
+        }
+
         private async void OnNotificationsButtonClicked(object sender, EventArgs e)
         {
             await Shell.Current.GoToAsync(nameof(NotificationPage));

@@ -103,7 +103,23 @@ public partial class RegisterPage : ContentPage
                 result.IdToken!
             );
 
-            if (saveSuccess)
+            // Równie¿ stwórz publiczny profil
+            var publicProfile = new UserPublicProfile
+            {
+                UserId = result.UserId!,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var publicSaveSuccess = await _firestoreService.SaveUserPublicProfileAsync(
+                result.UserId!,
+                publicProfile,
+                result.IdToken!
+            );
+
+            if (saveSuccess && publicSaveSuccess)
             {
                 await DisplayAlert("Sukces", "Rejestracja powiod³a siê! Twój profil zosta³ zapisany.", "OK");
                 await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
