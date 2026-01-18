@@ -540,14 +540,75 @@ public class FirestoreService : IFirestoreService
                 System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Warning - could not update invitation: {responseBody}");
             }
 
-            // Step 3: Try to update caretaker's profile with caregiver info (best-effort)
-            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Attempting to update caretaker profile");
-            var caretakerProfile = await GetUserProfileAsync(caretakerId, idToken);
+            // Step 3: Update caretaker's caregiversID using targeted update (respects Security Rules)
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Attempting to update caretaker's caregiversID");
             
-            if (caretakerProfile != null && !caretakerProfile.CaregiversID.Contains(actualCaregiverId))
+            var caretakerProfile = await GetUserProfileAsync(caretakerId, idToken);
+            if (caretakerProfile == null)
+            {
+                caretakerProfile = new UserProfile
+                {
+                    CaregiversID = new List<string> { actualCaregiverId },
+                    CreatedAt = DateTime.UtcNow
+                };
+            }
+            else if (!caretakerProfile.CaregiversID.Contains(actualCaregiverId))
             {
                 caretakerProfile.CaregiversID.Add(actualCaregiverId);
-                await SaveUserProfileAsync(caretakerId, caretakerProfile, idToken);
+            }
+
+            // Use targeted update with updateMask to only update caregiversID field
+            var caretakerUpdateUrl = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{caretakerId}?key={FirebaseConfig.WebApiKey}&updateMask.fieldPaths=caregiversID";
+            
+            using (var stream = new System.IO.MemoryStream())
+            using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                writer.WriteStartObject();
+                
+                writer.WritePropertyName("caregiversID");
+                writer.WriteStartObject();
+                writer.WritePropertyName("arrayValue");
+                writer.WriteStartObject();
+                
+                if (caretakerProfile.CaregiversID.Count > 0)
+                {
+                    writer.WritePropertyName("values");
+                    writer.WriteStartArray();
+                    foreach (var id in caretakerProfile.CaregiversID)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("stringValue", id);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+                
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                
+                writer.Flush();
+                var caretakerPayload = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                
+                System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Caretaker update payload: {caretakerPayload}");
+                
+                var caretakerContent = new StringContent(caretakerPayload, System.Text.Encoding.UTF8, "application/json");
+                
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+                var caretakerResponse = await _httpClient.PatchAsync(caretakerUpdateUrl, caretakerContent);
+                _httpClient.DefaultRequestHeaders.Authorization = null;
+                
+                System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Caretaker update response: {caretakerResponse.StatusCode}");
+                
+                if (!caretakerResponse.IsSuccessStatusCode)
+                {
+                    var caretakerResponseBody = await caretakerResponse.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Caretaker update error: {caretakerResponseBody}");
+                }
             }
 
             System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] SUCCESS - Relationship established");
