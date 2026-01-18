@@ -12,8 +12,8 @@
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True" Color="#512BD4" />
 
         <VerticalStackLayout x:Name="EmptyStateLayout" IsVisible="False" VerticalOptions="CenterAndExpand" HorizontalOptions="Center" Spacing="15">
-            <Label Text="Brak powiadomien" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
-            <Label Text="Nie masz zadnych nowych powiadomien." FontSize="16" HorizontalTextAlignment="Center" TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
+            <Label Text="Brak powiadomień" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
+            <Label Text="Nie masz żadnych nowych powiadomień." FontSize="16" HorizontalTextAlignment="Center" TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
         </VerticalStackLayout>
 
         <CollectionView x:Name="NotificationsCollectionView" ItemsSource="{Binding Notifications}">
@@ -52,7 +52,7 @@
         </CollectionView>
 
         <Button x:Name="RefreshButton" Text="Odśwież" Clicked="OnRefreshClicked" BackgroundColor="#512BD4" TextColor="White" />
-        <Button x:Name="BackButton" Text="Wroc" Clicked="OnBackClicked" BackgroundColor="#512BD4" TextColor="White" />
+        <Button x:Name="BackButton" Text="Wróć" Clicked="OnBackClicked" BackgroundColor="#512BD4" TextColor="White" />
     </VerticalStackLayout>
 
 </ContentPage>
