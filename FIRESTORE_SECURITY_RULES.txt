@@ -1,9 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Pe³ne profile - tylko do w³asnego (czytanie i pisanie)
+    // Pe³ne profile - mo¿na czytaæ swój profil lub profile swoich opiekunów/podopiecznych
     match /users/{userId} {
-      allow read: if request.auth.uid == userId;
+      allow read: if request.auth.uid == userId ||
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.caregiversID.hasAny([userId]) ||
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.caretakersID.hasAny([userId]);
       allow write: if request.auth.uid == userId;
       
       // Zezwól na aktualizacjê caregiversID i caretakersID przez innych u¿ytkowników

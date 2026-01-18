@@ -3,13 +3,13 @@ using I_AM.Services;
 
 namespace I_AM;
 
-public partial class AddCaregiverPage : ContentPage
+public partial class ManageCaregiverPage : ContentPage
 {
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
     public ObservableCollection<CaregiverInfo> Caregivers { get; set; }
 
-    public AddCaregiverPage()
+    public ManageCaregiverPage()
     {
         InitializeComponent();
         Caregivers = new ObservableCollection<CaregiverInfo>();
@@ -28,6 +28,7 @@ public partial class AddCaregiverPage : ContentPage
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: START");
             CaregiversLoadingIndicator.IsRunning = true;
             CaregiversLoadingIndicator.IsVisible = true;
             ErrorLabel.IsVisible = false;
@@ -36,17 +37,24 @@ public partial class AddCaregiverPage : ContentPage
             var userId = await _authService.GetCurrentUserIdAsync();
             var idToken = await _authService.GetCurrentIdTokenAsync();
 
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: userId={userId}");
+
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
             {
+                System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Missing userId or idToken");
                 ShowError("B³¹d: Nie mo¿na za³adowaæ danych u¿ytkownika");
                 return;
             }
 
             // Pobierz listê opiekunów
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetCaregiversAsync");
             var caregivers = await _firestoreService.GetCaregiversAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {caregivers.Count} caregivers");
 
             if (caregivers.Count == 0)
             {
+                System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: No caregivers found");
                 NoCaregiversLabel.IsVisible = true;
             }
             else
@@ -54,12 +62,15 @@ public partial class AddCaregiverPage : ContentPage
                 NoCaregiversLabel.IsVisible = false;
                 foreach (var caregiver in caregivers)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding caregiver {caregiver.FirstName}");
                     Caregivers.Add(caregiver);
                 }
             }
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: SUCCESS");
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Exception - {ex.Message}\n{ex.StackTrace}");
             ShowError($"B³¹d podczas ³adowania opiekunów: {ex.Message}");
         }
         finally
@@ -158,6 +169,8 @@ public partial class AddCaregiverPage : ContentPage
             {
                 await DisplayAlert("Sukces", $"Zaproszenie wys³ane do {caregiverEmail}", "OK");
                 CaregiverEmailEntry.Text = string.Empty;
+                // Reload caregivers list after sending invitation
+                await LoadCaregiversAsync();
             }
             else
             {
@@ -219,6 +232,8 @@ public partial class AddCaregiverPage : ContentPage
                 }
 
                 await DisplayAlert("Sukces", "Opiekun zosta³ usuniêty", "OK");
+                // Reload caregivers list after removal
+                await LoadCaregiversAsync();
             }
             else
             {

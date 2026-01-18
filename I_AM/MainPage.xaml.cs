@@ -29,7 +29,7 @@ namespace I_AM
 
         private async void OnManagCaregiversButtonClicked(object sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(AddCaregiverPage));
+            await Shell.Current.GoToAsync(nameof(ManageCaregiverPage));
         }
 
         private async void OnNotificationsButtonClicked(object sender, EventArgs e)

@@ -784,6 +784,8 @@ public class FirestoreService : IFirestoreService
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] START - userId: {userId}, caregiverId: {caregiverId}");
+
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caregiverId))
             {
                 return false;
@@ -805,15 +807,77 @@ public class FirestoreService : IFirestoreService
             // 4. Usuñ userId z caretakersID
             caregiverProfile.CaretakersID.Remove(userId);
 
-            // 5. Aktualizuj obydwa profile
+            // 5. Aktualizuj profil u¿ytkownika (zwyk³a aktualizacja)
+            System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Updating user profile");
             var userSaved = await SaveUserProfileAsync(userId, userProfile, idToken);
-            var caregiverSaved = await SaveUserProfileAsync(caregiverId, caregiverProfile, idToken);
+            if (!userSaved)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Failed to update user profile");
+                return false;
+            }
 
-            return userSaved && caregiverSaved;
+            // 6. Aktualizuj profil caregiver'a u¿ywaj¹c targeted update (tylko caretakersID)
+            System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Updating caregiver profile with targeted update");
+            var caregiverUpdateUrl = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{caregiverId}?key={FirebaseConfig.WebApiKey}&updateMask.fieldPaths=caretakersID";
+            
+            using (var stream = new System.IO.MemoryStream())
+            using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                writer.WriteStartObject();
+                
+                writer.WritePropertyName("caretakersID");
+                writer.WriteStartObject();
+                writer.WritePropertyName("arrayValue");
+                writer.WriteStartObject();
+                
+                if (caregiverProfile.CaretakersID.Count > 0)
+                {
+                    writer.WritePropertyName("values");
+                    writer.WriteStartArray();
+                    foreach (var id in caregiverProfile.CaretakersID)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("stringValue", id);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+                
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                
+                writer.Flush();
+                var caregiverPayload = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                
+                System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Caregiver update payload: {caregiverPayload}");
+                
+                var caregiverContent = new StringContent(caregiverPayload, System.Text.Encoding.UTF8, "application/json");
+                
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+                var caregiverResponse = await _httpClient.PatchAsync(caregiverUpdateUrl, caregiverContent);
+                _httpClient.DefaultRequestHeaders.Authorization = null;
+                
+                System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Caregiver update response: {caregiverResponse.StatusCode}");
+                
+                if (!caregiverResponse.IsSuccessStatusCode)
+                {
+                    var caregiverResponseBody = await caregiverResponse.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Caregiver update error: {caregiverResponseBody}");
+                    return false;
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] SUCCESS - Relationship removed");
+            return true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d usuwania opiekuna: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[RemoveCaregiver] Exception: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
     }
@@ -824,24 +888,40 @@ public class FirestoreService : IFirestoreService
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] START - userId: {userId}");
+
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
             {
+                System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Missing userId or idToken");
                 return caregivers;
             }
 
             // 1. Pobierz profil u¿ytkownika aby uzyskaæ listê caregiverIDs
+            System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Fetching user profile");
             var userProfile = await GetUserProfileAsync(userId, idToken);
-            if (userProfile == null || userProfile.CaregiversID.Count == 0)
+            
+            if (userProfile == null)
             {
+                System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] User profile is null");
+                return caregivers;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] User has {userProfile.CaregiversID.Count} caregivers");
+
+            if (userProfile.CaregiversID.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] No caregivers found");
                 return caregivers;
             }
 
             // 2. Dla ka¿dego caregiverId pobierz jego profil
             foreach (var caregiverId in userProfile.CaregiversID)
             {
+                System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Fetching caregiver profile for {caregiverId}");
                 var profile = await GetUserProfileAsync(caregiverId, idToken);
                 if (profile != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Adding caregiver: {profile.FirstName} {profile.LastName}");
                     caregivers.Add(new CaregiverInfo
                     {
                         UserId = caregiverId,
@@ -852,13 +932,18 @@ public class FirestoreService : IFirestoreService
                         AddedAt = profile.CreatedAt
                     });
                 }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Could not fetch caregiver profile for {caregiverId}");
+                }
             }
 
+            System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] SUCCESS - returning {caregivers.Count} caregivers");
             return caregivers;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d pobierania opiekunów: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[GetCaregiversAsync] Exception: {ex.Message}\n{ex.StackTrace}");
             return caregivers;
         }
         finally

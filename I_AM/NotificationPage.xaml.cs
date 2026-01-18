@@ -59,7 +59,7 @@ public partial class NotificationPage : ContentPage
                 {
                     Id = invitation.Id,
                     Title = $"Zaproszenie od {invitation.FromUserName}",
-                    Message = $"{invitation.FromUserName} chce byæ Twoim opiekunem",
+                    Message = $"{invitation.FromUserName} chce byæ twoim podopiecznym",
                     CreatedAt = invitation.CreatedAt,
                     Type = "caregiver_invitation",
                     InvitationId = invitation.Id,
