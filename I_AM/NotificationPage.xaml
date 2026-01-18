@@ -1,28 +1,29 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="I_AM.NotificationPage"
-             Title="Powiadomienia">
+         xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+         x:Class="I_AM.NotificationPage"
+         Title="Powiadomienia"
+         BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
-    <VerticalStackLayout Padding="20" Spacing="20" VerticalOptions="FillAndExpand">
+<VerticalStackLayout Padding="20" Spacing="20" VerticalOptions="FillAndExpand">
         
-        <Label Text="Powiadomienia" FontSize="32" FontAttributes="Bold" HorizontalOptions="Center" />
+    <Label Text="Powiadomienia" FontSize="32" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
 
         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True" Color="#512BD4" />
 
         <VerticalStackLayout x:Name="EmptyStateLayout" IsVisible="False" VerticalOptions="CenterAndExpand" HorizontalOptions="Center" Spacing="15">
-            <Label Text="Brak powiadomien" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#333333" />
-            <Label Text="Nie masz zadnych nowych powiadomien." FontSize="16" HorizontalTextAlignment="Center" TextColor="#666666" />
+            <Label Text="Brak powiadomien" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
+            <Label Text="Nie masz zadnych nowych powiadomien." FontSize="16" HorizontalTextAlignment="Center" TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
         </VerticalStackLayout>
 
         <CollectionView x:Name="NotificationsCollectionView" ItemsSource="{Binding Notifications}">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame Margin="10" Padding="15" BorderColor="#EEEEEE" CornerRadius="10">
+                    <Frame Margin="10" Padding="15" BorderColor="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" CornerRadius="10" BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
                         <VerticalStackLayout Spacing="10">
-                            <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="#000000" />
-                            <Label Text="{Binding Message}" FontSize="14" TextColor="#666666" />
-                            <Label Text="{Binding CreatedAt}" FontSize="12" TextColor="#999999" />
+                            <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
+                            <Label Text="{Binding Message}" FontSize="14" TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
+                            <Label Text="{Binding CreatedAt}" FontSize="12" TextColor="{AppThemeBinding Light=#999999, Dark=#808080}" />
                             
                             <StackLayout Orientation="Horizontal" Spacing="10" Padding="0,10,0,0">
                                 <Button 

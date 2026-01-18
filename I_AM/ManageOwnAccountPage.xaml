@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="I_AM.ManageOwnAccountPage"
-             Title="Zarządzaj Kontem"
-             Shell.NavBarIsVisible="True">
+xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+x:Class="I_AM.ManageOwnAccountPage"
+Title="Zarządzaj Kontem"
+Shell.NavBarIsVisible="True"
+BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
     <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*" RowSpacing="0">
         
@@ -22,7 +23,9 @@
         </VerticalStackLayout>
 
         <!-- Content -->
-        <ScrollView Grid.Row="1">
+        <ScrollView 
+            Grid.Row="1"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
             <VerticalStackLayout 
                 Padding="20"
                 Spacing="15">
@@ -49,7 +52,8 @@
                     BorderColor="#512BD4"
                     CornerRadius="10"
                     Padding="15"
-                    HasShadow="True">
+                    HasShadow="True"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
                     <VerticalStackLayout Spacing="15">
 
                         <!-- Email Section -->
@@ -58,17 +62,17 @@
                                 Text="Email"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="EmailLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- First Name Section -->
                         <VerticalStackLayout Spacing="5">
@@ -76,17 +80,17 @@
                                 Text="Imię"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="FirstNameLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- Last Name Section -->
                         <VerticalStackLayout Spacing="5">
@@ -94,17 +98,17 @@
                                 Text="Nazwisko"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="LastNameLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- Age Section -->
                         <VerticalStackLayout Spacing="5">
@@ -112,17 +116,17 @@
                                 Text="Wiek"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="AgeLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- Sex Section -->
                         <VerticalStackLayout Spacing="5">
@@ -130,17 +134,17 @@
                                 Text="Płeć"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="SexLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- Phone Number Section -->
                         <VerticalStackLayout Spacing="5">
@@ -148,17 +152,17 @@
                                 Text="Nr Telefonu"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="PhoneNumberLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- Created At Section -->
                         <VerticalStackLayout Spacing="5">
@@ -166,17 +170,17 @@
                                 Text="Utworzone"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="CreatedAtLabel"
                                 Text="-"
                                 FontSize="14"
-                                TextColor="#999999" />
+                                TextColor="{AppThemeBinding Light=#999999, Dark=#808080}" />
                         </VerticalStackLayout>
 
                         <BoxView 
                             HeightRequest="1"
-                            Color="#EEEEEE" />
+                            Color="{AppThemeBinding Light=#EEEEEE, Dark=#333333}" />
 
                         <!-- User Type Section -->
                         <VerticalStackLayout Spacing="5">
@@ -184,12 +188,12 @@
                                 Text="Typ Konta"
                                 FontSize="14"
                                 FontAttributes="Bold"
-                                TextColor="#666666" />
+                                TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label 
                                 x:Name="UserTypeLabel"
                                 Text="-"
                                 FontSize="16"
-                                TextColor="#000000" />
+                                TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                         </VerticalStackLayout>
 
                     </VerticalStackLayout>
@@ -202,7 +206,8 @@
         <VerticalStackLayout 
             Grid.Row="2"
             Padding="20"
-            Spacing="10">
+            Spacing="10"
+            BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
             <Button 
                 x:Name="EditButton"
