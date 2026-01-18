@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 x:Class="I_AM.ManageCaregiverPage"
-Title="Manage Caregivers"
+Title="Zarządzaj Opiekunami"
 Shell.NavBarIsVisible="True"
 BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
@@ -14,7 +14,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
             Spacing="5"
             BackgroundColor="#512BD4">
             <Label 
-                Text="Manage Caregivers"
+                Text="Zarządzaj Opiekunami"
                 FontSize="32"
                 FontAttributes="Bold"
                 TextColor="White"
@@ -49,20 +49,20 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                     BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
                     <VerticalStackLayout Spacing="15">
                         <Label 
-                            Text="Caregiver Email"
+                            Text="Email Opiekuna"
                             FontSize="16"
                             FontAttributes="Bold"
                             TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
                         
                         <Entry 
                             x:Name="CaregiverEmailEntry"
-                            Placeholder="Enter caregiver email"
+                            Placeholder="Wpisz email opiekuna"
                             Keyboard="Email"
                             FontSize="14" />
 
                         <Button 
                             x:Name="AddButton"
-                            Text="Send Invitation"
+                            Text="Wyślij Zaproszenie"
                             Clicked="OnAddCaregiverClicked"
                             BackgroundColor="#512BD4"
                             TextColor="White"
@@ -71,7 +71,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                 </Frame>
 
                 <Label 
-                    Text="My Caregivers"
+                    Text="Moi Opiekunowie"
                     FontSize="18"
                     FontAttributes="Bold"
                     TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}"
@@ -100,13 +100,13 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                                                 FontSize="12"
                                                 TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                                             <Label 
-                                                Text="{Binding Status}"
+                                                Text="{Binding Status, StringFormat='Status: {0}'}"
                                                 FontSize="11"
                                                 TextColor="{AppThemeBinding Light=#999999, Dark=#808080}" />
                                         </VerticalStackLayout>
                                         <Button 
                                             x:Name="RemoveButton"
-                                            Text="Remove"
+                                            Text="Usuń"
                                             Clicked="OnRemoveCaregiverClicked"
                                             BackgroundColor="#f44336"
                                             TextColor="White"
@@ -122,7 +122,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
                 <Label 
                     x:Name="NoCaregiversLabel"
-                    Text="You dont have any caregivers yet"
+                    Text="Nie masz jeszcze żadnych opiekunów"
                     FontSize="14"
                     TextColor="{AppThemeBinding Light=#999999, Dark=#808080}"
                     HorizontalTextAlignment="Center"
@@ -140,7 +140,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
             <Button 
                 x:Name="BackButton"
-                Text="Back"
+                Text="Wróć"
                 Clicked="OnBackClicked"
                 BackgroundColor="Transparent"
                 TextColor="#512BD4"

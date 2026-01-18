@@ -46,25 +46,48 @@ public partial class ManageCaregiverPage : ContentPage
                 return;
             }
 
-            // Pobierz listê opiekunów
+            // 1. Pobierz listê zaakceptowanych opiekunów
             System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetCaregiversAsync");
             var caregivers = await _firestoreService.GetCaregiversAsync(userId, idToken);
 
-            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {caregivers.Count} caregivers");
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {caregivers.Count} accepted caregivers");
 
-            if (caregivers.Count == 0)
+            // 2. Pobierz listê oczekuj¹cych zaproszeñ WYS£ANYCH przez bie¿¹cego u¿ytkownika (caretaker)
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetSentPendingInvitationsAsync");
+            var sentPendingInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {sentPendingInvitations.Count} sent pending invitations");
+
+            // 3. Dodaj zaakceptowanych opiekunów
+            foreach (var caregiver in caregivers)
             {
-                System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: No caregivers found");
+                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding accepted caregiver {caregiver.FirstName}");
+                Caregivers.Add(caregiver);
+            }
+
+            // 4. Dodaj wys³ane oczekuj¹ce zaproszenia jako caregivers ze statusem "pending"
+            foreach (var invitation in sentPendingInvitations)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
+                Caregivers.Add(new CaregiverInfo
+                {
+                    UserId = invitation.ToUserId,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
+                    LastName = string.Empty,
+                    Status = "pending",
+                    AddedAt = invitation.CreatedAt
+                });
+            }
+
+            if (Caregivers.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: No caregivers or invitations found");
                 NoCaregiversLabel.IsVisible = true;
             }
             else
             {
                 NoCaregiversLabel.IsVisible = false;
-                foreach (var caregiver in caregivers)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding caregiver {caregiver.FirstName}");
-                    Caregivers.Add(caregiver);
-                }
             }
             System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: SUCCESS");
         }
