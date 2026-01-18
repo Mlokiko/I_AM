@@ -476,48 +476,50 @@ public class FirestoreService : IFirestoreService
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] START - userId: {userId}, caregiverId: {caregiverId}");
+
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return false;
             }
 
-            // 1. Pobierz profil u¿ytkownika
-            var userProfile = await GetUserProfileAsync(userId, idToken);
-            if (userProfile == null)
-                return false;
+            var caretakerId = caregiverId;  
+            var actualCaregiverId = userId; 
 
-            // 2. Dodaj caregiverId do caregiversID
-            if (!userProfile.CaregiversID.Contains(caregiverId))
-            {
-                userProfile.CaregiversID.Add(caregiverId);
-            }
-
-            // 3. Pobierz profil opiekuna
-            var caregiverProfile = await GetUserProfileAsync(caregiverId, idToken);
+            // Step 1: Update ONLY the current user's (caregiver's) profile with caretaker info
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Updating current user's caretakersID");
+            var caregiverProfile = await GetUserProfileAsync(actualCaregiverId, idToken);
+            
             if (caregiverProfile == null)
-                return false;
-
-            // 4. Dodaj userId do caretakersID
-            if (!caregiverProfile.CaretakersID.Contains(userId))
             {
-                caregiverProfile.CaretakersID.Add(userId);
+                caregiverProfile = new UserProfile 
+                { 
+                    CaretakersID = new List<string> { caretakerId },
+                    CreatedAt = DateTime.UtcNow
+                };
+            }
+            else if (!caregiverProfile.CaretakersID.Contains(caretakerId))
+            {
+                caregiverProfile.CaretakersID.Add(caretakerId);
             }
 
-            // 5. Aktualizuj obydwa profile
-            var userSaved = await SaveUserProfileAsync(userId, userProfile, idToken);
-            var caregiverSaved = await SaveUserProfileAsync(caregiverId, caregiverProfile, idToken);
+            var caregiverUpdateSuccess = await SaveUserProfileAsync(actualCaregiverId, caregiverProfile, idToken);
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Caregiver profile update: {caregiverUpdateSuccess}");
 
-            if (!userSaved || !caregiverSaved)
+            if (!caregiverUpdateSuccess)
+            {
                 return false;
+            }
 
-            // 6. Aktualizuj status zaproszenia
+            // Step 2: Update invitation status to accepted
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Attempting to update invitation status");
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
 
             var invitation = new CaregiverInvitation
             {
                 Id = invitationId,
-                FromUserId = caregiverId,
-                ToUserId = userId,
+                FromUserId = caretakerId,
+                ToUserId = actualCaregiverId,
                 Status = "accepted",
                 RespondedAt = DateTime.UtcNow
             };
@@ -525,20 +527,157 @@ public class FirestoreService : IFirestoreService
             var payloadJson = BuildInvitationPayload(invitation);
             var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
 
+            // SET AUTHORIZATION HEADER BEFORE THE REQUEST
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
-
             var response = await _httpClient.PatchAsync(url, content);
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+            
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Invitation update: {response.StatusCode}");
 
-            return response.IsSuccessStatusCode;
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Warning - could not update invitation: {responseBody}");
+            }
+
+            // Step 3: Try to update caretaker's profile with caregiver info (best-effort)
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Attempting to update caretaker profile");
+            var caretakerProfile = await GetUserProfileAsync(caretakerId, idToken);
+            
+            if (caretakerProfile != null && !caretakerProfile.CaregiversID.Contains(actualCaregiverId))
+            {
+                caretakerProfile.CaregiversID.Add(actualCaregiverId);
+                await SaveUserProfileAsync(caretakerId, caretakerProfile, idToken);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] SUCCESS - Relationship established");
+            return true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d akceptowania zaproszenia: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Exception: {ex.Message}");
             return false;
         }
-        finally
+    }
+
+    private async Task<bool> UpdateProfileFieldAsync(string userId, string fieldName, List<string> values, string idToken)
+    {
+        try
         {
-            _httpClient.DefaultRequestHeaders.Authorization = null;
+            System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] START - userId: {userId}, fieldName: {fieldName}, values count: {values.Count}");
+
+            // First, try to ensure the document exists by creating a minimal profile if needed
+            System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] Ensuring document exists");
+            await EnsureProfileExistsAsync(userId, idToken);
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{userId}?key={FirebaseConfig.WebApiKey}&updateMask.fieldPaths={fieldName}";
+
+            using (var stream = new System.IO.MemoryStream())
+            using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                writer.WriteStartObject();
+
+                writer.WritePropertyName(fieldName);
+                writer.WriteStartObject();
+                writer.WritePropertyName("arrayValue");
+                writer.WriteStartObject();
+
+                if (values.Count > 0)
+                {
+                    writer.WritePropertyName("values");
+                    writer.WriteStartArray();
+                    foreach (var value in values)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("stringValue", value);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+
+                writer.Flush();
+                var payloadJson = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+                System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] Sending update: {payloadJson}");
+
+                var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+                var response = await _httpClient.PatchAsync(url, content);
+
+                System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] Response status: {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] Error: {responseBody}");
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] Exception: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[UpdateProfileFieldAsync] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
+    private async Task EnsureProfileExistsAsync(string userId, string idToken)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Checking if profile exists for userId: {userId}");
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{userId}?key={FirebaseConfig.WebApiKey}";
+
+            var getResponse = await _httpClient.GetAsync(url);
+
+            if (getResponse.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Profile already exists");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Profile doesn't exist, creating minimal profile");
+
+            // Create minimal profile
+            var minimalProfile = new UserProfile
+            {
+                Email = string.Empty,
+                FirstName = string.Empty,
+                LastName = string.Empty,
+                Sex = string.Empty,
+                PhoneNumber = string.Empty,
+                Age = 0,
+                IsCaregiver = false,
+                CreatedAt = DateTime.UtcNow,
+                CaretakersID = new List<string>(),
+                CaregiversID = new List<string>()
+            };
+
+            var payloadJson = BuildProfilePayload(minimalProfile);
+            var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+
+            var createResponse = await _httpClient.PatchAsync(url, content);
+            System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Profile creation response: {createResponse.StatusCode}");
+
+            if (!createResponse.IsSuccessStatusCode)
+            {
+                var responseBody = await createResponse.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Error creating profile: {responseBody}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[EnsureProfileExistsAsync] Exception: {ex.Message}");
         }
     }
 

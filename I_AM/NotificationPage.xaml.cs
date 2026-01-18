@@ -103,8 +103,15 @@ public partial class NotificationPage : ContentPage
             {
                 button.IsEnabled = false;
 
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] START");
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] InvitationId: {notification.InvitationId}");
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] CaregiverId: {notification.CaregiverId}");
+
                 var userId = await _authService.GetCurrentUserIdAsync();
                 var idToken = await _authService.GetCurrentIdTokenAsync();
+
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] Current UserId: {userId}");
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] Has IdToken: {!string.IsNullOrEmpty(idToken)}");
 
                 if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
                 {
@@ -112,12 +119,15 @@ public partial class NotificationPage : ContentPage
                     return;
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] Calling AcceptCaregiverInvitationAsync");
                 var success = await _firestoreService.AcceptCaregiverInvitationAsync(
                     userId,
                     notification.InvitationId,
                     notification.CaregiverId,
                     idToken
                 );
+
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] AcceptCaregiverInvitationAsync returned: {success}");
 
                 if (success)
                 {
@@ -136,6 +146,8 @@ public partial class NotificationPage : ContentPage
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] Exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[OnAcceptButtonClicked] StackTrace: {ex.StackTrace}");
                 await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
             }
             finally
