@@ -13,8 +13,11 @@ public interface IFirestoreService
     Task<bool> SaveCaregiverInvitationAsync(string invitationId, CaregiverInvitation invitation, string idToken);
     Task<List<CaregiverInvitation>> GetPendingInvitationsAsync(string userId, string idToken);
     Task<List<CaregiverInvitation>> GetSentPendingInvitationsAsync(string userId, string idToken);
+    Task<List<CaregiverInvitation>> GetSentRejectedInvitationsAsync(string userId, string idToken);
+    Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken);
     Task<bool> AcceptCaregiverInvitationAsync(string userId, string invitationId, string caregiverId, string idToken);
     Task<bool> RejectCaregiverInvitationAsync(string userId, string invitationId, string idToken);
+    Task<bool> DeleteCaregiverInvitationAsync(string invitationId, string idToken);
     Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken);
     Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken);
 }
@@ -535,6 +538,179 @@ public class FirestoreService : IFirestoreService
         {
             System.Diagnostics.Debug.WriteLine($"B³¹d pobierania wys³anych zaproszeñ: {ex.Message}");
             return invitations;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<List<CaregiverInvitation>> GetSentRejectedInvitationsAsync(string userId, string idToken)
+    {
+        var invitations = new List<CaregiverInvitation>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return invitations;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return invitations;
+            }
+
+            var jsonDocument = JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("documents", out var documents))
+            {
+                return invitations;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var fromUserId = GetStringValue(fields, "fromUserId");
+                var status = GetStringValue(fields, "status");
+
+                if (fromUserId == userId && status == "rejected")
+                {
+                    var invitation = new CaregiverInvitation
+                    {
+                        Id = GetDocumentId(doc),
+                        FromUserId = fromUserId,
+                        ToUserId = GetStringValue(fields, "toUserId"),
+                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
+                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        Status = status,
+                        CreatedAt = GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                    };
+                    invitations.Add(invitation);
+                }
+            }
+
+            return invitations;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d pobierania odrzuconych zaproszeñ: {ex.Message}");
+            return invitations;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken)
+    {
+        var invitations = new List<CaregiverInvitation>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return invitations;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return invitations;
+            }
+
+            var jsonDocument = JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("documents", out var documents))
+            {
+                return invitations;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var fromUserId = GetStringValue(fields, "fromUserId");
+
+                // Get all invitations from this user (sent or received)
+                if (fromUserId == userId)
+                {
+                    var invitation = new CaregiverInvitation
+                    {
+                        Id = GetDocumentId(doc),
+                        FromUserId = fromUserId,
+                        ToUserId = GetStringValue(fields, "toUserId"),
+                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
+                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        Status = GetStringValue(fields, "status"),
+                        CreatedAt = GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                    };
+                    invitations.Add(invitation);
+                }
+            }
+
+            return invitations;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d pobierania wszystkich zaproszeñ: {ex.Message}");
+            return invitations;
+        }
+        finally
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    public async Task<bool> DeleteCaregiverInvitationAsync(string invitationId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(invitationId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
+
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            var response = await _httpClient.DeleteAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"B³¹d usuwania zaproszenia. Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response: {responseBody}");
+            }
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"B³¹d usuwania zaproszenia: {ex.Message}");
+            return false;
         }
         finally
         {
