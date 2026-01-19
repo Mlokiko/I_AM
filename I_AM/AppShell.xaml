@@ -6,7 +6,6 @@
     xmlns:local="clr-namespace:I_AM"
     xmlns:auth="clr-namespace:I_AM.Pages.Authentication"
     xmlns:main="clr-namespace:I_AM.Pages.Main"
-    xmlns:caregiver="clr-namespace:I_AM.Pages.CareGiver"
     Title="I_AM">
 
     <!-- Strony autentykacji -->

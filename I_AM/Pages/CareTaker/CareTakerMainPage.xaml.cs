@@ -1,6 +1,6 @@
 ﻿using I_AM.Services;
 using I_AM.Pages.Authentication;
-using I_AM.Pages.CareGiver;
+using I_AM.Pages.CareTaker;
 
 namespace I_AM.Pages.Main
 {

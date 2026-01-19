@@ -3,7 +3,7 @@ using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
 
-namespace I_AM.Pages.CareGiver;
+namespace I_AM.Pages.CareTaker;
 
 public partial class ManageCaregiverPage : ContentPage
 {

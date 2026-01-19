@@ -76,11 +76,17 @@
 	  <Compile Update="Pages\Authentication\RegisterPage.xaml.cs">
 	    <DependentUpon>Pages\Authentication\RegisterPage.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="Pages\CareTaker\CareTakerMainPage.xaml.cs">
+	    <DependentUpon>CareTakerMainPage.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="Pages\Main\CalendarPage.xaml.cs">
 	    <DependentUpon>Pages\Main\CalendarPage.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="Pages\Main\EditCareTakerQuestionsPage.xaml.cs">
+	  <Compile Update="Pages\CareGiver\EditCareTakerQuestionsPage.xaml.cs">
 	    <DependentUpon>Pages\Main\EditCareTakerQuestionsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Pages\Main\NotificationsPage.xaml.cs">
+	    <DependentUpon>NotificationsPage.xaml</DependentUpon>
 	  </Compile>
 	</ItemGroup>
 
@@ -97,25 +103,25 @@
 	  <MauiXaml Update="Pages\Main\CalendarPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\Main\DailyActivityPage.xaml">
+	  <MauiXaml Update="Pages\CareTaker\DailyActivityPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\Main\EditCareTakerQuestionsPage.xaml">
+	  <MauiXaml Update="Pages\CareGiver\EditCareTakerQuestionsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="Pages\Main\InformationPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\Main\MainPage.xaml">
+	  <MauiXaml Update="Pages\CareTaker\CareTakerMainPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="Pages\Main\ManageOwnAccountPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\Main\NotificationPage.xaml">
+	  <MauiXaml Update="Pages\Main\NotificationsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="Pages\CareGiver\ManageCaregiverPage.xaml">
+	  <MauiXaml Update="Pages\CareTaker\ManageCaregiverPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>
