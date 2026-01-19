@@ -13,16 +13,16 @@ namespace I_AM
             SetLogoBasedOnTheme();
             
             // Listen for theme changes
-            Application.Current.RequestedThemeChanged += OnRequestedThemeChanged;
+            Application.Current!.RequestedThemeChanged += OnRequestedThemeChanged;
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
-            Application.Current.RequestedThemeChanged -= OnRequestedThemeChanged;
+            Application.Current!.RequestedThemeChanged -= OnRequestedThemeChanged;
         }
 
-        private void OnRequestedThemeChanged(object sender, AppThemeChangedEventArgs e)
+        private void OnRequestedThemeChanged(object? sender, AppThemeChangedEventArgs e)
         {
             SetLogoBasedOnTheme();
         }

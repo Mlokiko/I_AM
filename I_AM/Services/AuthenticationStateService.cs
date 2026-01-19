@@ -90,7 +90,7 @@ public class AuthenticationStateService : IAuthenticationStateService
         }
     }
 
-    public async Task ClearAuthenticationStateAsync()
+    public Task ClearAuthenticationStateAsync()
     {
         try
         {
@@ -106,5 +106,6 @@ public class AuthenticationStateService : IAuthenticationStateService
         {
             System.Diagnostics.Debug.WriteLine($"? B³¹d czyszczenia stanu autentykacji: {ex.Message}");
         }
+        return Task.CompletedTask;
     }
 }

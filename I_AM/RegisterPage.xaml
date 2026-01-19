@@ -78,7 +78,7 @@
             <Picker 
                 x:Name="SexPicker"
                 Title="Wybierz opcję"
-                ItemsSource="{Binding SexOptions}"
+                ItemsSource="{Binding SexOptions, TargetNullValue=''}"
                 FontSize="16" />
 
             <Label 
@@ -100,7 +100,7 @@
             <Picker 
                 x:Name="AccountTypePicker"
                 Title="Wybierz typ konta"
-                ItemsSource="{Binding AccountTypeOptions}"
+                ItemsSource="{Binding AccountTypeOptions, TargetNullValue=''}"
                 FontSize="16" />
 
             <Button 

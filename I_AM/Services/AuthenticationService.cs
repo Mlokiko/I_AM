@@ -96,8 +96,8 @@ public class AuthenticationService : IAuthenticationService
                 if (root.TryGetProperty("localId", out var localId) && 
                     root.TryGetProperty("idToken", out var idToken))
                 {
-                    _currentUserId = localId.GetString();
-                    _idToken = idToken.GetString();
+                    _currentUserId = localId.GetString() ?? string.Empty;
+                    _idToken = idToken.GetString() ?? string.Empty;
                     _currentEmail = email;
 
                     // Zapisz stan autentykacji
@@ -174,8 +174,8 @@ public class AuthenticationService : IAuthenticationService
                 if (root.TryGetProperty("localId", out var localId) && 
                     root.TryGetProperty("idToken", out var idToken))
                 {
-                    _currentUserId = localId.GetString();
-                    _idToken = idToken.GetString();
+                    _currentUserId = localId.GetString() ?? string.Empty;
+                    _idToken = idToken.GetString() ?? string.Empty;
                     _currentEmail = email;
 
                     // Zapisz stan autentykacji
