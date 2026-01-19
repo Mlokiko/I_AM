@@ -11,7 +11,56 @@
                 FontSize="24"
                 Padding="20"
                 HorizontalOptions="Center" />
-
+            <Label 
+                Text="Numery alarmowe"
+                FontSize="22"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Pogotowie ratunkowe - 999"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Numer alarmowy - 112"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Centrum Wsparcia dla Osób Dorosłych w Kryzysie Psychicznym - 800702222"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="czat dostępny na: https://centrumwsparcia.pl"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Całodobowy telefon zaufania dla osób dorosłych - 116123"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="czat dostępny na: https://116sos.pl"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Całodobowy telefon zaufania dzieci i młodzieży - 116111"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="czat dostępny na: https://116111.pl/czatuj/"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
+            <Label 
+                Text="Telefon Pogadania - 800012005"
+                FontSize="20"
+                Padding="20"
+                HorizontalOptions="Center" />
             <Label 
                 Text="Depresja jest jedną z najczęstszych chorób XXI wieku. Osoby z depresją często izolują się i nie dzielą się swoimi problemami. System ma pomóc osobom z depresją w zwróceniu się o wsparcie do bliskiej osoby w okresach złego samopoczucia. System będzie aplikacją internetową."
                 FontSize="20"
