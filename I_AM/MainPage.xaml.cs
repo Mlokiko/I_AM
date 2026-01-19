@@ -37,6 +37,20 @@ namespace I_AM
             await Shell.Current.GoToAsync(nameof(NotificationPage));
         }
 
+        private async void OnCalendarButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(CalendarPage));
+        }
+        private async void OnDailyActivityButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(DailyActivityPage));
+        }
+        
+        private async void OnEditCareTakerQuestionsButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
+        }
+
         private async void OnLogoutButtonClicked(object sender, EventArgs e)
         {
             var result = await DisplayAlert("Potwierdzenie", "Czy na pewno chcesz się wylogować?", "Tak", "Nie");

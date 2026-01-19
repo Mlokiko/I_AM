@@ -31,15 +31,15 @@
                     BackgroundColor="#FFA500" />
 
                 <Button 
-                    x:Name="MyActivityButton"
+                    x:Name="DailyActivityButton"
                     Text="Wykonaj codzienną aktywność"
-                    Clicked="OnLoginButtonClicked" 
+                    Clicked="OnDailyActivityButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 
-                    x:Name="MyCallendarButton"
+                    x:Name="MyCalendarButton"
                     Text="Kalendarz"
-                    Clicked="OnRegisterButtonClicked" 
+                    Clicked="OnCalendarButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 
@@ -49,9 +49,9 @@
                     HorizontalOptions="Fill" />
 
                 <Button 
-                    x:Name="MyEditQuestionsButton"
+                    x:Name="EditCareTakerQuestionsButton"
                     Text="Edytuj pytania podpiecznego"
-                    Clicked="OnRegisterButtonClicked" 
+                    Clicked="OnEditCareTakerQuestionsButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 
