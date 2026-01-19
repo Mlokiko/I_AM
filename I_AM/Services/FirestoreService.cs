@@ -1,125 +1,9 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using I_AM.Models;
+using I_AM.Services.Helpers;
+using I_AM.Services.Interfaces;
 
 namespace I_AM.Services;
-
-public interface IFirestoreService
-{
-    Task<bool> SaveUserProfileAsync(string userId, UserProfile profile, string idToken);
-    Task<UserProfile?> GetUserProfileAsync(string userId, string idToken);
-    Task<bool> DeleteUserProfileAsync(string userId, string idToken);
-    Task<bool> SaveUserPublicProfileAsync(string userId, UserPublicProfile profile, string idToken);
-    Task<(UserPublicProfile? profile, string? userId)> GetUserPublicProfileByEmailAsync(string email, string idToken);
-    Task<bool> SaveCaregiverInvitationAsync(string invitationId, CaregiverInvitation invitation, string idToken);
-    Task<List<CaregiverInvitation>> GetPendingInvitationsAsync(string userId, string idToken);
-    Task<List<CaregiverInvitation>> GetSentPendingInvitationsAsync(string userId, string idToken);
-    Task<List<CaregiverInvitation>> GetSentRejectedInvitationsAsync(string userId, string idToken);
-    Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken);
-    Task<bool> AcceptCaregiverInvitationAsync(string userId, string invitationId, string caregiverId, string idToken);
-    Task<bool> RejectCaregiverInvitationAsync(string userId, string invitationId, string idToken);
-    Task<bool> DeleteCaregiverInvitationAsync(string invitationId, string idToken);
-    Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken);
-    Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken);
-}
-
-public class UserProfile
-{
-    [JsonPropertyName("firstName")]
-    public string FirstName { get; set; } = string.Empty;
-
-    [JsonPropertyName("lastName")]
-    public string LastName { get; set; } = string.Empty;
-
-    [JsonPropertyName("age")]
-    public int Age { get; set; }
-
-    [JsonPropertyName("sex")]
-    public string Sex { get; set; } = string.Empty;
-
-    [JsonPropertyName("phoneNumber")]
-    public string PhoneNumber { get; set; } = string.Empty;
-
-    [JsonPropertyName("createdAt")]
-    public DateTime CreatedAt { get; set; }
-
-    [JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
-
-    [JsonPropertyName("isCaregiver")]
-    public bool IsCaregiver { get; set; }
-
-    [JsonPropertyName("caretakersID")]
-    public List<string> CaretakersID { get; set; } = new();
-
-    [JsonPropertyName("caregiversID")]
-    public List<string> CaregiversID { get; set; } = new();
-}
-
-public class UserPublicProfile
-{
-    [JsonPropertyName("userId")]
-    public string UserId { get; set; } = string.Empty;
-
-    [JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
-
-    [JsonPropertyName("firstName")]
-    public string FirstName { get; set; } = string.Empty;
-
-    [JsonPropertyName("lastName")]
-    public string LastName { get; set; } = string.Empty;
-
-    [JsonPropertyName("createdAt")]
-    public DateTime CreatedAt { get; set; }
-}
-
-public class CaregiverInvitation
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
-
-    [JsonPropertyName("fromUserId")]
-    public string FromUserId { get; set; } = string.Empty;
-
-    [JsonPropertyName("toUserId")]
-    public string ToUserId { get; set; } = string.Empty;
-
-    [JsonPropertyName("toUserEmail")]
-    public string ToUserEmail { get; set; } = string.Empty;
-
-    [JsonPropertyName("fromUserName")]
-    public string FromUserName { get; set; } = string.Empty;
-
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = "pending"; // pending, accepted, rejected
-
-    [JsonPropertyName("createdAt")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [JsonPropertyName("respondedAt")]
-    public DateTime? RespondedAt { get; set; }
-}
-
-public class CaregiverInfo
-{
-    [JsonPropertyName("userId")]
-    public string UserId { get; set; } = string.Empty;
-
-    [JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
-
-    [JsonPropertyName("firstName")]
-    public string FirstName { get; set; } = string.Empty;
-
-    [JsonPropertyName("lastName")]
-    public string LastName { get; set; } = string.Empty;
-
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = "accepted"; // accepted, pending
-
-    [JsonPropertyName("addedAt")]
-    public DateTime AddedAt { get; set; }
-}
 
 public class FirestoreService : IFirestoreService
 {
@@ -146,8 +30,8 @@ public class FirestoreService : IFirestoreService
             // URL do Firestore REST API
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/users/{userId}?key={FirebaseConfig.WebApiKey}";
 
-            // Buduj payload rêcznie jako JSON, aby mieæ pe³n¹ kontrolê nad struktur¹
-            var payloadJson = BuildProfilePayload(profile);
+            // Buduj payload u¿ywaj¹c helpera
+            var payloadJson = FirestorePayloadBuilder.BuildProfilePayload(profile);
 
             var content = new StringContent(
                 payloadJson,
@@ -211,16 +95,16 @@ public class FirestoreService : IFirestoreService
 
             var profile = new UserProfile
             {
-                FirstName = GetStringValue(fields, "firstName"),
-                LastName = GetStringValue(fields, "lastName"),
-                Age = GetIntValue(fields, "age"),
-                Sex = GetStringValue(fields, "sex"),
-                PhoneNumber = GetStringValue(fields, "phoneNumber"),
-                Email = GetStringValue(fields, "email"),
-                CreatedAt = GetTimestampValue(fields, "createdAt"),
-                IsCaregiver = GetBoolValue(fields, "isCaregiver"),
-                CaretakersID = GetStringArray(fields, "caretakersID"),
-                CaregiversID = GetStringArray(fields, "caregiversID")
+                FirstName = FirestoreValueExtractor.GetStringValue(fields, "firstName"),
+                LastName = FirestoreValueExtractor.GetStringValue(fields, "lastName"),
+                Age = FirestoreValueExtractor.GetIntValue(fields, "age"),
+                Sex = FirestoreValueExtractor.GetStringValue(fields, "sex"),
+                PhoneNumber = FirestoreValueExtractor.GetStringValue(fields, "phoneNumber"),
+                Email = FirestoreValueExtractor.GetStringValue(fields, "email"),
+                CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                IsCaregiver = FirestoreValueExtractor.GetBoolValue(fields, "isCaregiver"),
+                CaretakersID = FirestoreValueExtractor.GetStringArray(fields, "caretakersID"),
+                CaregiversID = FirestoreValueExtractor.GetStringArray(fields, "caregiversID")
             };
 
             return profile;
@@ -321,7 +205,7 @@ public class FirestoreService : IFirestoreService
                     continue;
                 }
 
-                var docEmail = GetStringValue(fields, "email");
+                var docEmail = FirestoreValueExtractor.GetStringValue(fields, "email");
                 
                 if (!string.IsNullOrEmpty(docEmail))
                 {
@@ -330,21 +214,21 @@ public class FirestoreService : IFirestoreService
 
                 if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
                 {
-                    var userId = GetDocumentId(doc);
+                    var userId = FirestoreValueExtractor.GetDocumentId(doc);
                     System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
 
                     var profile = new UserProfile
                     {
-                        FirstName = GetStringValue(fields, "firstName"),
-                        LastName = GetStringValue(fields, "lastName"),
-                        Age = GetIntValue(fields, "age"),
-                        Sex = GetStringValue(fields, "sex"),
-                        PhoneNumber = GetStringValue(fields, "phoneNumber"),
+                        FirstName = FirestoreValueExtractor.GetStringValue(fields, "firstName"),
+                        LastName = FirestoreValueExtractor.GetStringValue(fields, "lastName"),
+                        Age = FirestoreValueExtractor.GetIntValue(fields, "age"),
+                        Sex = FirestoreValueExtractor.GetStringValue(fields, "sex"),
+                        PhoneNumber = FirestoreValueExtractor.GetStringValue(fields, "phoneNumber"),
                         Email = docEmail,
-                        CreatedAt = GetTimestampValue(fields, "createdAt"),
-                        IsCaregiver = GetBoolValue(fields, "isCaregiver"),
-                        CaretakersID = GetStringArray(fields, "caretakersID"),
-                        CaregiversID = GetStringArray(fields, "caregiversID")
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                        IsCaregiver = FirestoreValueExtractor.GetBoolValue(fields, "isCaregiver"),
+                        CaretakersID = FirestoreValueExtractor.GetStringArray(fields, "caretakersID"),
+                        CaregiversID = FirestoreValueExtractor.GetStringArray(fields, "caregiversID")
                     };
                     return (profile, userId);
                 }
@@ -375,7 +259,7 @@ public class FirestoreService : IFirestoreService
 
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
 
-            var payloadJson = BuildInvitationPayload(invitation);
+            var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
 
             var content = new StringContent(
                 payloadJson,
@@ -443,21 +327,21 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var toUserId = GetStringValue(fields, "toUserId");
-                var status = GetStringValue(fields, "status");
+                var toUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId");
+                var status = FirestoreValueExtractor.GetStringValue(fields, "status");
 
                 if (toUserId == userId && status == "pending")
                 {
                     var invitation = new CaregiverInvitation
                     {
-                        Id = GetDocumentId(doc),
-                        FromUserId = GetStringValue(fields, "fromUserId"),
+                        Id = FirestoreValueExtractor.GetDocumentId(doc),
+                        FromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId"),
                         ToUserId = toUserId,
-                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
-                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        ToUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail"),
+                        FromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName"),
                         Status = status,
-                        CreatedAt = GetTimestampValue(fields, "createdAt"),
-                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
                     };
                     invitations.Add(invitation);
                 }
@@ -512,21 +396,21 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var fromUserId = GetStringValue(fields, "fromUserId");
-                var status = GetStringValue(fields, "status");
+                var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
+                var status = FirestoreValueExtractor.GetStringValue(fields, "status");
 
                 if (fromUserId == userId && status == "pending")
                 {
                     var invitation = new CaregiverInvitation
                     {
-                        Id = GetDocumentId(doc),
+                        Id = FirestoreValueExtractor.GetDocumentId(doc),
                         FromUserId = fromUserId,
-                        ToUserId = GetStringValue(fields, "toUserId"),
-                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
-                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        ToUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId"),
+                        ToUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail"),
+                        FromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName"),
                         Status = status,
-                        CreatedAt = GetTimestampValue(fields, "createdAt"),
-                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
                     };
                     invitations.Add(invitation);
                 }
@@ -581,21 +465,21 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var fromUserId = GetStringValue(fields, "fromUserId");
-                var status = GetStringValue(fields, "status");
+                var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
+                var status = FirestoreValueExtractor.GetStringValue(fields, "status");
 
                 if (fromUserId == userId && status == "rejected")
                 {
                     var invitation = new CaregiverInvitation
                     {
-                        Id = GetDocumentId(doc),
+                        Id = FirestoreValueExtractor.GetDocumentId(doc),
                         FromUserId = fromUserId,
-                        ToUserId = GetStringValue(fields, "toUserId"),
-                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
-                        FromUserName = GetStringValue(fields, "fromUserName"),
+                        ToUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId"),
+                        ToUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail"),
+                        FromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName"),
                         Status = status,
-                        CreatedAt = GetTimestampValue(fields, "createdAt"),
-                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
                     };
                     invitations.Add(invitation);
                 }
@@ -650,21 +534,21 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var fromUserId = GetStringValue(fields, "fromUserId");
+                var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
 
                 // Get all invitations from this user (sent or received)
                 if (fromUserId == userId)
                 {
                     var invitation = new CaregiverInvitation
                     {
-                        Id = GetDocumentId(doc),
+                        Id = FirestoreValueExtractor.GetDocumentId(doc),
                         FromUserId = fromUserId,
-                        ToUserId = GetStringValue(fields, "toUserId"),
-                        ToUserEmail = GetStringValue(fields, "toUserEmail"),
-                        FromUserName = GetStringValue(fields, "fromUserName"),
-                        Status = GetStringValue(fields, "status"),
-                        CreatedAt = GetTimestampValue(fields, "createdAt"),
-                        RespondedAt = GetTimestampValueNullable(fields, "respondedAt")
+                        ToUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId"),
+                        ToUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail"),
+                        FromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName"),
+                        Status = FirestoreValueExtractor.GetStringValue(fields, "status"),
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                        RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
                     };
                     invitations.Add(invitation);
                 }
@@ -770,7 +654,7 @@ public class FirestoreService : IFirestoreService
                 RespondedAt = DateTime.UtcNow
             };
 
-            var payloadJson = BuildInvitationPayload(invitation);
+            var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
             var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
 
             // SET AUTHORIZATION HEADER BEFORE THE REQUEST
@@ -970,7 +854,7 @@ public class FirestoreService : IFirestoreService
                 CaregiversID = new List<string>()
             };
 
-            var payloadJson = BuildProfilePayload(minimalProfile);
+            var payloadJson = FirestorePayloadBuilder.BuildProfilePayload(minimalProfile);
             var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
 
             var createResponse = await _httpClient.PatchAsync(url, content);
@@ -1006,7 +890,7 @@ public class FirestoreService : IFirestoreService
                 RespondedAt = DateTime.UtcNow
             };
 
-            var payloadJson = BuildInvitationPayload(invitation);
+            var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
             var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
 
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
@@ -1209,7 +1093,7 @@ public class FirestoreService : IFirestoreService
 
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/user_public_profiles/{userId}?key={FirebaseConfig.WebApiKey}";
 
-            var payloadJson = BuildPublicProfilePayload(profile);
+            var payloadJson = FirestorePayloadBuilder.BuildPublicProfilePayload(profile);
 
             var content = new StringContent(
                 payloadJson,
@@ -1291,7 +1175,7 @@ public class FirestoreService : IFirestoreService
                     continue;
                 }
 
-                var docEmail = GetStringValue(fields, "email");
+                var docEmail = FirestoreValueExtractor.GetStringValue(fields, "email");
 
                 if (!string.IsNullOrEmpty(docEmail))
                 {
@@ -1300,16 +1184,16 @@ public class FirestoreService : IFirestoreService
 
                 if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
                 {
-                    var userId = GetDocumentId(doc);
+                    var userId = FirestoreValueExtractor.GetDocumentId(doc);
                     System.Diagnostics.Debug.WriteLine($"GetUserPublicProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
 
                     var profile = new UserPublicProfile
                     {
                         UserId = userId,
                         Email = docEmail,
-                        FirstName = GetStringValue(fields, "firstName"),
-                        LastName = GetStringValue(fields, "lastName"),
-                        CreatedAt = GetTimestampValue(fields, "createdAt")
+                        FirstName = FirestoreValueExtractor.GetStringValue(fields, "firstName"),
+                        LastName = FirestoreValueExtractor.GetStringValue(fields, "lastName"),
+                        CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt")
                     };
                     return (profile, userId);
                 }
@@ -1370,317 +1254,6 @@ public class FirestoreService : IFirestoreService
         finally
         {
             _httpClient.DefaultRequestHeaders.Authorization = null;
-        }
-    }
-
-    private static string GetStringValue(JsonElement fields, string key)
-    {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("stringValue", out var value))
-        {
-            return value.GetString() ?? string.Empty;
-        }
-        return string.Empty;
-    }
-
-    private static int GetIntValue(JsonElement fields, string key)
-    {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("integerValue", out var value))
-        {
-            if (int.TryParse(value.GetString(), out var result))
-            {
-                return result;
-            }
-        }
-        return 0;
-    }
-
-    private static DateTime GetTimestampValue(JsonElement fields, string key)
-    {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("timestampValue", out var value))
-        {
-            if (DateTime.TryParse(value.GetString(), out var result))
-            {
-                return result;
-            }
-        }
-        return DateTime.MinValue;
-    }
-
-    private static bool GetBoolValue(JsonElement fields, string key)
-    {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("booleanValue", out var value))
-        {
-            return value.GetBoolean();
-        }
-        return false;
-    }
-
-    private static List<string> GetStringArray(JsonElement fields, string key)
-    {
-        var result = new List<string>();
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("arrayValue", out var arrayValue))
-        {
-            if (arrayValue.TryGetProperty("values", out var values))
-            {
-                foreach (var item in values.EnumerateArray())
-                {
-                    if (item.TryGetProperty("stringValue", out var stringValue))
-                    {
-                        result.Add(stringValue.GetString() ?? string.Empty);
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    private static DateTime? GetTimestampValueNullable(JsonElement fields, string key)
-    {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("timestampValue", out var value))
-        {
-            if (DateTime.TryParse(value.GetString(), out var result))
-            {
-                return result;
-            }
-        }
-        return null;
-    }
-
-    private static string GetDocumentId(JsonElement document)
-    {
-        if (document.TryGetProperty("name", out var nameElement))
-        {
-            var name = nameElement.GetString() ?? string.Empty;
-            var parts = name.Split('/');
-            return parts.Length > 0 ? parts[^1] : string.Empty;
-        }
-        return string.Empty;
-    }
-
-    private static string BuildInvitationPayload(CaregiverInvitation invitation)
-    {
-        using (var stream = new System.IO.MemoryStream())
-        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
-
-            if (!string.IsNullOrEmpty(invitation.Id))
-            {
-                writer.WritePropertyName("id");
-                writer.WriteStartObject();
-                writer.WriteString("stringValue", invitation.Id);
-                writer.WriteEndObject();
-            }
-
-            if (!string.IsNullOrEmpty(invitation.FromUserId))
-            {
-                writer.WritePropertyName("fromUserId");
-                writer.WriteStartObject();
-                writer.WriteString("stringValue", invitation.FromUserId);
-                writer.WriteEndObject();
-            }
-
-            if (!string.IsNullOrEmpty(invitation.ToUserId))
-            {
-                writer.WritePropertyName("toUserId");
-                writer.WriteStartObject();
-                writer.WriteString("stringValue", invitation.ToUserId);
-                writer.WriteEndObject();
-            }
-
-            if (!string.IsNullOrEmpty(invitation.ToUserEmail))
-            {
-                writer.WritePropertyName("toUserEmail");
-                writer.WriteStartObject();
-                writer.WriteString("stringValue", invitation.ToUserEmail);
-                writer.WriteEndObject();
-            }
-
-            if (!string.IsNullOrEmpty(invitation.FromUserName))
-            {
-                writer.WritePropertyName("fromUserName");
-                writer.WriteStartObject();
-                writer.WriteString("stringValue", invitation.FromUserName);
-                writer.WriteEndObject();
-            }
-
-            writer.WritePropertyName("status");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", invitation.Status);
-            writer.WriteEndObject();
-
-            writer.WritePropertyName("createdAt");
-            writer.WriteStartObject();
-            writer.WriteString("timestampValue", invitation.CreatedAt.ToString("o"));
-            writer.WriteEndObject();
-
-            if (invitation.RespondedAt.HasValue)
-            {
-                writer.WritePropertyName("respondedAt");
-                writer.WriteStartObject();
-                writer.WriteString("timestampValue", invitation.RespondedAt.Value.ToString("o"));
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
-        }
-    }
-
-    private static string BuildPublicProfilePayload(UserPublicProfile profile)
-    {
-        using (var stream = new System.IO.MemoryStream())
-        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
-
-            // userId
-            writer.WritePropertyName("userId");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.UserId);
-            writer.WriteEndObject();
-
-            // email
-            writer.WritePropertyName("email");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.Email);
-            writer.WriteEndObject();
-
-            // firstName
-            writer.WritePropertyName("firstName");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.FirstName);
-            writer.WriteEndObject();
-
-            // lastName
-            writer.WritePropertyName("lastName");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.LastName);
-            writer.WriteEndObject();
-
-            // createdAt
-            writer.WritePropertyName("createdAt");
-            writer.WriteStartObject();
-            writer.WriteString("timestampValue", profile.CreatedAt.ToString("o"));
-            writer.WriteEndObject();
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
-        }
-    }
-
-    private static string BuildProfilePayload(UserProfile profile)
-    {
-        using (var stream = new System.IO.MemoryStream())
-        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
-
-            // firstName
-            writer.WritePropertyName("firstName");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.FirstName);
-            writer.WriteEndObject();
-
-            // lastName
-            writer.WritePropertyName("lastName");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.LastName);
-            writer.WriteEndObject();
-
-            // age
-            writer.WritePropertyName("age");
-            writer.WriteStartObject();
-            writer.WriteString("integerValue", profile.Age.ToString());
-            writer.WriteEndObject();
-
-            // sex
-            writer.WritePropertyName("sex");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.Sex);
-            writer.WriteEndObject();
-
-            // phoneNumber
-            writer.WritePropertyName("phoneNumber");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.PhoneNumber);
-            writer.WriteEndObject();
-
-            // email
-            writer.WritePropertyName("email");
-            writer.WriteStartObject();
-            writer.WriteString("stringValue", profile.Email);
-            writer.WriteEndObject();
-
-            // createdAt
-            writer.WritePropertyName("createdAt");
-            writer.WriteStartObject();
-            writer.WriteString("timestampValue", profile.CreatedAt.ToString("o"));
-            writer.WriteEndObject();
-
-            // isCaregiver
-            writer.WritePropertyName("isCaregiver");
-            writer.WriteStartObject();
-            writer.WriteBoolean("booleanValue", profile.IsCaregiver);
-            writer.WriteEndObject();
-
-            // caretakersID
-            writer.WritePropertyName("caretakersID");
-            writer.WriteStartObject();
-            writer.WritePropertyName("arrayValue");
-            writer.WriteStartObject();
-            if (profile.CaretakersID.Count > 0)
-            {
-                writer.WritePropertyName("values");
-                writer.WriteStartArray();
-                foreach (var id in profile.CaretakersID)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("stringValue", id);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            // caregiversID
-            writer.WritePropertyName("caregiversID");
-            writer.WriteStartObject();
-            writer.WritePropertyName("arrayValue");
-            writer.WriteStartObject();
-            if (profile.CaregiversID.Count > 0)
-            {
-                writer.WritePropertyName("values");
-                writer.WriteStartArray();
-                foreach (var id in profile.CaregiversID)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("stringValue", id);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
         }
     }
 }
