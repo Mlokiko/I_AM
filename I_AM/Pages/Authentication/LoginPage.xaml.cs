@@ -1,6 +1,7 @@
 using I_AM.Services;
+using I_AM.Pages.Main;
 
-namespace I_AM;
+namespace I_AM.Pages.Authentication;
 
 public partial class LoginPage : ContentPage
 {

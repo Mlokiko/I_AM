@@ -1,4 +1,4 @@
-namespace I_AM;
+namespace I_AM.Pages.Main;
 
 public partial class CalendarPage : ContentPage
 {

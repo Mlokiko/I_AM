@@ -1,4 +1,7 @@
 ﻿using I_AM.Services;
+using I_AM.Pages.Authentication;
+using I_AM.Pages.Main;
+using I_AM.Pages.CareGiver;
 
 namespace I_AM
 {

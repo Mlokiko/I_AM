@@ -2,7 +2,7 @@ using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
 
-namespace I_AM;
+namespace I_AM.Pages.Authentication;
 
 public partial class RegisterPage : ContentPage
 {

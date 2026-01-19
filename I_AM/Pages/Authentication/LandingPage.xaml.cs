@@ -1,5 +1,8 @@
-namespace I_AM
+namespace I_AM.Pages.Authentication
 {
+    using I_AM.Pages.Main;
+    using I_AM.Pages.Authentication;
+
     public partial class LandingPage : ContentPage
     {
         public LandingPage()

@@ -1,8 +1,9 @@
 using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
+using I_AM.Pages.Authentication;
 
-namespace I_AM;
+namespace I_AM.Pages.Main;
 
 public partial class ManageOwnAccountPage : ContentPage
 {

@@ -4,38 +4,41 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:I_AM"
+    xmlns:auth="clr-namespace:I_AM.Pages.Authentication"
+    xmlns:main="clr-namespace:I_AM.Pages.Main"
+    xmlns:caregiver="clr-namespace:I_AM.Pages.CareGiver"
     Title="I_AM">
 
     <!-- Strony autentykacji -->
     <ShellContent
         Title="Logowanie"
-        ContentTemplate="{DataTemplate local:LoginPage}"
+        ContentTemplate="{DataTemplate auth:LoginPage}"
         Route="LoginPage" />
 
     <ShellContent
         Title="Rejestracja"
-        ContentTemplate="{DataTemplate local:RegisterPage}"
+        ContentTemplate="{DataTemplate auth:RegisterPage}"
         Route="RegisterPage" />
 
     <!-- Strony główne aplikacji -->
     <ShellContent
         Title="Landing Page"
-        ContentTemplate="{DataTemplate local:LandingPage}"
+        ContentTemplate="{DataTemplate auth:LandingPage}"
         Route="LandingPage" />
 
     <ShellContent
         Title="Panel główny"
-        ContentTemplate="{DataTemplate local:MainPage}"
+        ContentTemplate="{DataTemplate main:MainPage}"
         Route="MainPage" />
 
     <ShellContent
         Title="Powiadomienia"
-        ContentTemplate="{DataTemplate local:NotificationPage}"
+        ContentTemplate="{DataTemplate main:NotificationPage}"
         Route="NotificationPage" />
 
     <ShellContent
         Title="Zarządzaj Kontem"
-        ContentTemplate="{DataTemplate local:ManageOwnAccountPage}"
+        ContentTemplate="{DataTemplate main:ManageOwnAccountPage}"
         Route="ManageOwnAccountPage" />
 
 </Shell>
