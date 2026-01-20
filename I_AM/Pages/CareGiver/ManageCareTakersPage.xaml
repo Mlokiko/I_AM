@@ -3,7 +3,7 @@
 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 xmlns:local="clr-namespace:I_AM.Models"
 x:Class="I_AM.Pages.CareGiver.ManageCareTakersPage"
-Title="Manage CareTakers"
+Title="Zarzadzaj Podopiecznymi"
 Shell.NavBarIsVisible="True"
 BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
@@ -15,7 +15,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
             Spacing="5"
             BackgroundColor="#512BD4">
             <Label 
-                Text="Manage CareTakers"
+                Text="Zarzadzaj Podopiecznymi"
                 FontSize="32"
                 FontAttributes="Bold"
                 TextColor="White"
@@ -42,8 +42,37 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                     HorizontalOptions="Fill"
                     HorizontalTextAlignment="Center" />
 
+                <Frame 
+                    BorderColor="#512BD4"
+                    CornerRadius="10"
+                    Padding="15"
+                    HasShadow="True"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
+                    <VerticalStackLayout Spacing="15">
+                        <Label 
+                            Text="Email Podopiecznego"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
+                        
+                        <Entry 
+                            x:Name="CareTakerEmailEntry"
+                            Placeholder="Wpisz email podopiecznego"
+                            Keyboard="Email"
+                            FontSize="14" />
+
+                        <Button 
+                            x:Name="AddButton"
+                            Text="Wyslij Zaproszenie"
+                            Clicked="OnAddCareTakerClicked"
+                            BackgroundColor="#512BD4"
+                            TextColor="White"
+                            FontSize="16" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Label 
-                    Text="My CareTakers"
+                    Text="Moi Podopieczni"
                     FontSize="18"
                     FontAttributes="Bold"
                     TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}"
@@ -76,15 +105,35 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                                                 FontSize="11"
                                                 TextColor="{AppThemeBinding Light=#999999, Dark=#808080}" />
                                         </VerticalStackLayout>
+                                    </StackLayout>
+                                    <StackLayout Orientation="Horizontal" Spacing="5">
+                                        <Button 
+                                            x:Name="AcceptButton"
+                                            Text="Przyjmij"
+                                            Clicked="OnAcceptCareTakerClicked"
+                                            BackgroundColor="#4CAF50"
+                                            TextColor="White"
+                                            FontSize="12"
+                                            Padding="10,5"
+                                            HorizontalOptions="FillAndExpand" />
+                                        <Button 
+                                            x:Name="RejectButton"
+                                            Text="Odrzuc"
+                                            Clicked="OnRejectCareTakerClicked"
+                                            BackgroundColor="#FF9800"
+                                            TextColor="White"
+                                            FontSize="12"
+                                            Padding="10,5"
+                                            HorizontalOptions="FillAndExpand" />
                                         <Button 
                                             x:Name="RemoveButton"
-                                            Text="Remove"
+                                            Text="Usun"
                                             Clicked="OnRemoveCareTakerClicked"
                                             BackgroundColor="#f44336"
                                             TextColor="White"
                                             FontSize="12"
                                             Padding="10,5"
-                                            VerticalOptions="Center" />
+                                            HorizontalOptions="FillAndExpand" />
                                     </StackLayout>
                                 </VerticalStackLayout>
                             </Frame>
@@ -94,7 +143,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
                 <Label 
                     x:Name="NoCareTakersLabel"
-                    Text="You dont have any careTakers yet"
+                    Text="Nie masz jeszcze zadnych podopiecznych"
                     FontSize="14"
                     TextColor="{AppThemeBinding Light=#999999, Dark=#808080}"
                     HorizontalTextAlignment="Center"
@@ -112,7 +161,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
             <Button 
                 x:Name="BackButton"
-                Text="Back"
+                Text="Wroc"
                 Clicked="OnBackClicked"
                 BackgroundColor="Transparent"
                 TextColor="#512BD4"

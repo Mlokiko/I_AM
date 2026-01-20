@@ -55,13 +55,23 @@ public partial class NotificationPage : ContentPage
                 return;
             }
 
+            // Get current user profile to check if they are a caregiver
+            var userProfile = await _firestoreService.GetUserProfileAsync(userId, idToken);
+            var isCaregiver = userProfile?.IsCaregiver ?? false;
+
             foreach (var invitation in invitations)
             {
+                // If current user is a caregiver, they are receiving an invitation to become a caregiver
+                // If current user is a caretaker, they are receiving an invitation to accept a caregiver
+                var message = isCaregiver 
+                    ? $"{invitation.FromUserName} chcê byæ twoim opiekunem" 
+                    : $"{invitation.FromUserName} chcê byæ twoim podopiecznym";
+                
                 Notifications.Add(new NotificationItem
                 {
                     Id = invitation.Id,
                     Title = $"Zaproszenie od {invitation.FromUserName}",
-                    Message = $"{invitation.FromUserName} chce byæ twoim podopiecznym",
+                    Message = message,
                     CreatedAt = invitation.CreatedAt,
                     Type = "caregiver_invitation",
                     InvitationId = invitation.Id,

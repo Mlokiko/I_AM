@@ -645,29 +645,55 @@ public class FirestoreService : IFirestoreService
             System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Attempting to update invitation status");
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
 
-            var invitation = new CaregiverInvitation
-            {
-                Id = invitationId,
-                FromUserId = caretakerId,
-                ToUserId = actualCaregiverId,
-                Status = "accepted",
-                RespondedAt = DateTime.UtcNow
-            };
-
-            var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
-            var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
-
-            // SET AUTHORIZATION HEADER BEFORE THE REQUEST
+            // Get current invitation to preserve all fields
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
-            var response = await _httpClient.PatchAsync(url, content);
+            var getResponse = await _httpClient.GetAsync(url);
             _httpClient.DefaultRequestHeaders.Authorization = null;
-            
-            System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Invitation update: {response.StatusCode}");
 
-            if (!response.IsSuccessStatusCode)
+            if (getResponse.IsSuccessStatusCode)
             {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Warning - could not update invitation: {responseBody}");
+                var getResponseBody = await getResponse.Content.ReadAsStringAsync();
+                var getJsonDocument = System.Text.Json.JsonDocument.Parse(getResponseBody);
+                var getRoot = getJsonDocument.RootElement;
+
+                if (getRoot.TryGetProperty("fields", out var getFields))
+                {
+                    var existingToUserEmail = FirestoreValueExtractor.GetStringValue(getFields, "toUserEmail");
+                    var existingFromUserName = FirestoreValueExtractor.GetStringValue(getFields, "fromUserName");
+                    var existingCreatedAt = FirestoreValueExtractor.GetTimestampValue(getFields, "createdAt");
+
+                    // Create invitation with all preserved fields
+                    var invitation = new CaregiverInvitation
+                    {
+                        Id = invitationId,
+                        FromUserId = caretakerId,
+                        ToUserId = actualCaregiverId,
+                        ToUserEmail = existingToUserEmail,
+                        FromUserName = existingFromUserName,
+                        Status = "accepted",
+                        CreatedAt = existingCreatedAt,
+                        RespondedAt = DateTime.UtcNow
+                    };
+
+                    var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
+                    var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+
+                    _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+                    var response = await _httpClient.PatchAsync(url, content);
+                    _httpClient.DefaultRequestHeaders.Authorization = null;
+                    
+                    System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Invitation update: {response.StatusCode}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Warning - could not update invitation: {responseBody}");
+                    }
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[AcceptInvitation] Warning - could not get current invitation data");
             }
 
             // Step 3: Update caretaker's caregiversID using targeted update (respects Security Rules)
@@ -881,27 +907,67 @@ public class FirestoreService : IFirestoreService
                 return false;
             }
 
+            // First, get the current invitation to preserve its data
             var url = $"https://firestore.googleapis.com/v1/projects/{_projectId}/databases/(default)/documents/caregiver_invitations/{invitationId}?key={FirebaseConfig.WebApiKey}";
 
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+
+            // Get current invitation data
+            var getResponse = await _httpClient.GetAsync(url);
+            if (!getResponse.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RejectCaregiverInvitationAsync] Failed to get current invitation: {getResponse.StatusCode}");
+                return false;
+            }
+
+            var responseBody = await getResponse.Content.ReadAsStringAsync();
+            var jsonDocument = System.Text.Json.JsonDocument.Parse(responseBody);
+            var root = jsonDocument.RootElement;
+
+            if (!root.TryGetProperty("fields", out var fields))
+            {
+                System.Diagnostics.Debug.WriteLine($"[RejectCaregiverInvitationAsync] No fields in invitation");
+                return false;
+            }
+
+            // Get all existing fields
+            var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
+            var toUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId");
+            var toUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail");
+            var fromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName");
+            var createdAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt");
+
+            System.Diagnostics.Debug.WriteLine($"[RejectCaregiverInvitationAsync] Current invitation - FromUserId: {fromUserId}, ToUserId: {toUserId}, FromUserName: {fromUserName}");
+
+            // Create full invitation object with all fields preserved
             var invitation = new CaregiverInvitation
             {
                 Id = invitationId,
+                FromUserId = fromUserId,
+                ToUserId = toUserId,
+                ToUserEmail = toUserEmail,
+                FromUserName = fromUserName,
                 Status = "rejected",
+                CreatedAt = createdAt,
                 RespondedAt = DateTime.UtcNow
             };
 
             var payloadJson = FirestorePayloadBuilder.BuildInvitationPayload(invitation);
             var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
 
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
-
             var response = await _httpClient.PatchAsync(url, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[RejectCaregiverInvitationAsync] Error: {response.StatusCode} - {errorBody}");
+            }
 
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"B³¹d odrzucania zaproszenia: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[RejectCaregiverInvitationAsync] Exception: {ex.Message}");
             return false;
         }
         finally
