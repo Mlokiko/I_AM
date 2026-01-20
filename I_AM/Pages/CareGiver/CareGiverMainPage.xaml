@@ -31,12 +31,6 @@
                     BackgroundColor="#FFA500" />
 
                 <Button 
-                    x:Name="DailyActivityButton"
-                    Text="Activity"
-                    Clicked="OnDailyActivityButtonClicked" 
-                    HorizontalOptions="Fill" />
-
-                <Button 
                     x:Name="MyCalendarButton"
                     Text="Kalendarz"
                     Clicked="OnCalendarButtonClicked" 
@@ -44,7 +38,7 @@
 
                 <Button 
                     x:Name="MySetProtectorButton"
-                    Text="Zarzadzaj Opiekunami"
+                    Text="Zarzadzaj Podopiecznymi"
                     Clicked="OnManagCaregiversButtonClicked" 
                     HorizontalOptions="Fill" />
 

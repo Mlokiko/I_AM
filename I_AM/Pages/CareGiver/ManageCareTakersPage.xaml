@@ -2,8 +2,8 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 xmlns:local="clr-namespace:I_AM.Models"
-x:Class="I_AM.Pages.CareTaker.ManageCaregiverPage"
-Title="Zarządzaj Opiekunami"
+x:Class="I_AM.Pages.CareGiver.ManageCareTakersPage"
+Title="Manage CareTakers"
 Shell.NavBarIsVisible="True"
 BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
@@ -15,7 +15,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
             Spacing="5"
             BackgroundColor="#512BD4">
             <Label 
-                Text="Zarządzaj Opiekunami"
+                Text="Manage CareTakers"
                 FontSize="32"
                 FontAttributes="Bold"
                 TextColor="White"
@@ -42,49 +42,20 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                     HorizontalOptions="Fill"
                     HorizontalTextAlignment="Center" />
 
-                <Frame 
-                    BorderColor="#512BD4"
-                    CornerRadius="10"
-                    Padding="15"
-                    HasShadow="True"
-                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
-                    <VerticalStackLayout Spacing="15">
-                        <Label 
-                            Text="Email Opiekuna"
-                            FontSize="16"
-                            FontAttributes="Bold"
-                            TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}" />
-                        
-                        <Entry 
-                            x:Name="CaregiverEmailEntry"
-                            Placeholder="Wpisz email opiekuna"
-                            Keyboard="Email"
-                            FontSize="14" />
-
-                        <Button 
-                            x:Name="AddButton"
-                            Text="Wyślij Zaproszenie"
-                            Clicked="OnAddCaregiverClicked"
-                            BackgroundColor="#512BD4"
-                            TextColor="White"
-                            FontSize="16" />
-                    </VerticalStackLayout>
-                </Frame>
-
                 <Label 
-                    Text="Moi Opiekunowie"
+                    Text="My CareTakers"
                     FontSize="18"
                     FontAttributes="Bold"
                     TextColor="{AppThemeBinding Light=#333333, Dark=#E8E8E8}"
                     Margin="0,10,0,0" />
 
                 <ActivityIndicator 
-                    x:Name="CaregiversLoadingIndicator"
+                    x:Name="CareTakersLoadingIndicator"
                     IsRunning="False"
                     IsVisible="False"
                     Color="#512BD4" />
 
-                <CollectionView x:Name="CaregiversCollectionView" ItemsSource="{Binding Caregivers}">
+                <CollectionView x:Name="CareTakersCollectionView" ItemsSource="{Binding CareTakers}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="local:CaregiverInfo">
                             <Frame Margin="0,5,0,5" Padding="15" BorderColor="{AppThemeBinding Light=#E0E0E0, Dark=#333333}" CornerRadius="8" BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
@@ -107,8 +78,8 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                                         </VerticalStackLayout>
                                         <Button 
                                             x:Name="RemoveButton"
-                                            Text="Usuń"
-                                            Clicked="OnRemoveCaregiverClicked"
+                                            Text="Remove"
+                                            Clicked="OnRemoveCareTakerClicked"
                                             BackgroundColor="#f44336"
                                             TextColor="White"
                                             FontSize="12"
@@ -122,8 +93,8 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                 </CollectionView>
 
                 <Label 
-                    x:Name="NoCaregiversLabel"
-                    Text="Nie masz jeszcze żadnych opiekunów"
+                    x:Name="NoCareTakersLabel"
+                    Text="You dont have any careTakers yet"
                     FontSize="14"
                     TextColor="{AppThemeBinding Light=#999999, Dark=#808080}"
                     HorizontalTextAlignment="Center"
@@ -141,7 +112,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
             <Button 
                 x:Name="BackButton"
-                Text="Wróć"
+                Text="Back"
                 Clicked="OnBackClicked"
                 BackgroundColor="Transparent"
                 TextColor="#512BD4"

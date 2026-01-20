@@ -32,7 +32,7 @@ namespace I_AM.Pages.CareTaker
 
         private async void OnManagCaregiversButtonClicked(object sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(ManageCaregiverPage));
+            await Shell.Current.GoToAsync(nameof(ManageCaregiversPage));
         }
 
         private async void OnNotificationsButtonClicked(object sender, EventArgs e)
@@ -47,11 +47,6 @@ namespace I_AM.Pages.CareTaker
         private async void OnDailyActivityButtonClicked(object sender, EventArgs e)
         {
             await Shell.Current.GoToAsync(nameof(DailyActivityPage));
-        }
-        
-        private async void OnEditCareTakerQuestionsButtonClicked(object sender, EventArgs e)
-        {
-            await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
         }
 
         private async void OnLogoutButtonClicked(object sender, EventArgs e)

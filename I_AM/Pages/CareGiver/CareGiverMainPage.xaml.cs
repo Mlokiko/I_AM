@@ -1,6 +1,7 @@
 using I_AM.Services;
 using I_AM.Pages.Authentication;
 using I_AM.Pages.CareTaker;
+using I_AM.Pages.CareGiver;
 using I_AM.Pages.Main;
 
 namespace I_AM.Pages.CareGiver
@@ -32,7 +33,7 @@ namespace I_AM.Pages.CareGiver
 
         private async void OnManagCaregiversButtonClicked(object sender, EventArgs e)
         {
-            await Shell.Current.GoToAsync(nameof(ManageCaregiverPage));
+            await Shell.Current.GoToAsync(nameof(ManageCareTakersPage));
         }
 
         private async void OnNotificationsButtonClicked(object sender, EventArgs e)
@@ -43,10 +44,6 @@ namespace I_AM.Pages.CareGiver
         private async void OnCalendarButtonClicked(object sender, EventArgs e)
         {
             await Shell.Current.GoToAsync(nameof(CalendarPage));
-        }
-        private async void OnDailyActivityButtonClicked(object sender, EventArgs e)
-        {
-            await Shell.Current.GoToAsync(nameof(DailyActivityPage));
         }
         
         private async void OnEditCareTakerQuestionsButtonClicked(object sender, EventArgs e)

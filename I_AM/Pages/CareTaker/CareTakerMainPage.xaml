@@ -32,7 +32,7 @@
 
                 <Button 
                     x:Name="DailyActivityButton"
-                    Text="Activity"
+                    Text="Codzienna aktywność"
                     Clicked="OnDailyActivityButtonClicked" 
                     HorizontalOptions="Fill" />
 
@@ -46,12 +46,6 @@
                     x:Name="MySetProtectorButton"
                     Text="Zarzadzaj Opiekunami"
                     Clicked="OnManagCaregiversButtonClicked" 
-                    HorizontalOptions="Fill" />
-
-                <Button 
-                    x:Name="EditCareTakerQuestionsButton"
-                    Text="Edytuj pytania podpiecznego"
-                    Clicked="OnEditCareTakerQuestionsButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 

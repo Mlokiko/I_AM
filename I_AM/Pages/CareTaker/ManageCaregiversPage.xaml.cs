@@ -5,7 +5,7 @@ using I_AM.Services.Interfaces;
 
 namespace I_AM.Pages.CareTaker;
 
-public partial class ManageCaregiverPage : ContentPage
+public partial class ManageCaregiversPage : ContentPage
 {
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
@@ -14,7 +14,7 @@ public partial class ManageCaregiverPage : ContentPage
     // Dictionary to track invitation IDs for accepted caregivers
     private Dictionary<string, string> _acceptedCaregiverInvitationIds = new();
 
-    public ManageCaregiverPage()
+    public ManageCaregiversPage()
     {
         InitializeComponent();
         Caregivers = new ObservableCollection<CaregiverInfo>();
