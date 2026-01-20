@@ -1,15 +1,15 @@
-ï»¿using I_AM.Services;
+using I_AM.Services;
 using I_AM.Pages.Authentication;
 using I_AM.Pages.CareTaker;
 using I_AM.Pages.Main;
 
-namespace I_AM.Pages.CareTaker
+namespace I_AM.Pages.CareGiver
 {
-    public partial class CareTakerMainPage : ContentPage
+    public partial class CareGiverMainPage : ContentPage
     {
         private readonly IAuthenticationService _authService;
 
-        public CareTakerMainPage()
+        public CareGiverMainPage()
         {
             InitializeComponent();
             _authService = ServiceHelper.GetService<IAuthenticationService>();
@@ -56,7 +56,7 @@ namespace I_AM.Pages.CareTaker
 
         private async void OnLogoutButtonClicked(object sender, EventArgs e)
         {
-            var result = await DisplayAlert("Potwierdzenie", "Czy na pewno chcesz siÄ™ wylogowaÄ‡?", "Tak", "Nie");
+            var result = await DisplayAlert("Potwierdzenie", "Czy na pewno chcesz siê wylogowaæ?", "Tak", "Nie");
             
             if (result)
             {
@@ -66,6 +66,4 @@ namespace I_AM.Pages.CareTaker
         }
     }
 }
-
-
 
