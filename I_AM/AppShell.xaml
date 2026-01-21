@@ -6,29 +6,31 @@
     xmlns:local="clr-namespace:I_AM"
     xmlns:auth="clr-namespace:I_AM.Pages.Authentication"
     xmlns:main="clr-namespace:I_AM.Pages.Main"
+    xmlns:caretaker="clr-namespace:I_AM.Pages.CareTaker"
+    xmlns:caregiver="clr-namespace:I_AM.Pages.CareGiver"
     Title="I_AM">
 
-    <!-- Strony autentykacji -->
+    <!-- Loading page shown while authentication is in progress -->
     <ShellContent
-        Title="Logowanie"
-        ContentTemplate="{DataTemplate auth:LoginPage}"
-        Route="LoginPage" />
+        Title="Loading"
+        ContentTemplate="{DataTemplate auth:LoadingPage}"
+        Route="LoadingPage" />
 
-    <ShellContent
-        Title="Rejestracja"
-        ContentTemplate="{DataTemplate auth:RegisterPage}"
-        Route="RegisterPage" />
-
-    <!-- Strony główne aplikacji -->
+    <!-- Main pages as ShellContent -->
     <ShellContent
         Title="Landing Page"
         ContentTemplate="{DataTemplate auth:LandingPage}"
         Route="LandingPage" />
 
     <ShellContent
-        Title="Panel główny"
-        ContentTemplate="{DataTemplate main:MainPage}"
-        Route="MainPage" />
+        Title="Panel główny - CareTaker"
+        ContentTemplate="{DataTemplate caretaker:CareTakerMainPage}"
+        Route="CareTakerMainPage" />
+
+    <ShellContent
+        Title="Panel główny - CareGiver"
+        ContentTemplate="{DataTemplate caregiver:CareGiverMainPage}"
+        Route="CareGiverMainPage" />
 
     <ShellContent
         Title="Powiadomienia"
@@ -41,4 +43,5 @@
         Route="ManageOwnAccountPage" />
 
 </Shell>
+
 

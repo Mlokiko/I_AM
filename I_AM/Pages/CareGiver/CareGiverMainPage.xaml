@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="I_AM.Pages.CareTaker.CareTakerMainPage">
+             x:Class="I_AM.Pages.CareGiver.CareGiverMainPage">
 
     <VerticalStackLayout 
         VerticalOptions="Fill" 
@@ -31,12 +31,6 @@
                     BackgroundColor="#FFA500" />
 
                 <Button 
-                    x:Name="DailyActivityButton"
-                    Text="Codzienna aktywność"
-                    Clicked="OnDailyActivityButtonClicked" 
-                    HorizontalOptions="Fill" />
-
-                <Button 
                     x:Name="MyCalendarButton"
                     Text="Kalendarz"
                     Clicked="OnCalendarButtonClicked" 
@@ -44,8 +38,14 @@
 
                 <Button 
                     x:Name="MySetProtectorButton"
-                    Text="Zarzadzaj Opiekunami"
+                    Text="Zarzadzaj Podopiecznymi"
                     Clicked="OnManagCaregiversButtonClicked" 
+                    HorizontalOptions="Fill" />
+
+                <Button 
+                    x:Name="EditCareTakerQuestionsButton"
+                    Text="Edytuj pytania podpiecznego"
+                    Clicked="OnEditCareTakerQuestionsButtonClicked" 
                     HorizontalOptions="Fill" />
 
                 <Button 
@@ -73,12 +73,10 @@
                 Padding="20"
                 TextColor="Black" 
                 HorizontalOptions="Center" >
-                
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnLabelTapped" />
                 </Label.GestureRecognizers>
             </Label>
-            
         </VerticalStackLayout>
     </VerticalStackLayout>
 </ContentPage>

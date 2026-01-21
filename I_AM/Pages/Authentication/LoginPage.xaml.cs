@@ -1,5 +1,5 @@
 using I_AM.Services;
-using I_AM.Pages.Main;
+using I_AM.Pages.CareTaker;
 
 namespace I_AM.Pages.Authentication;
 
@@ -29,7 +29,12 @@ public partial class LoginPage : ContentPage
         if (result.Success)
         {
             await DisplayAlert("Sukces", result.Message, "OK");
-            await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
+            
+            // Get the current AppShell and navigate based on user role
+            if (Shell.Current is AppShell appShell)
+            {
+                await appShell.NavigateToAppropriatePageAsync();
+            }
         }
         else
         {

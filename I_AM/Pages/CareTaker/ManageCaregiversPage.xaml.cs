@@ -5,7 +5,7 @@ using I_AM.Services.Interfaces;
 
 namespace I_AM.Pages.CareTaker;
 
-public partial class ManageCaregiverPage : ContentPage
+public partial class ManageCaregiversPage : ContentPage
 {
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
@@ -14,7 +14,7 @@ public partial class ManageCaregiverPage : ContentPage
     // Dictionary to track invitation IDs for accepted caregivers
     private Dictionary<string, string> _acceptedCaregiverInvitationIds = new();
 
-    public ManageCaregiverPage()
+    public ManageCaregiversPage()
     {
         InitializeComponent();
         Caregivers = new ObservableCollection<CaregiverInfo>();
@@ -26,6 +26,7 @@ public partial class ManageCaregiverPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] OnAppearing called");
         await LoadCaregiversAsync();
     }
 
@@ -51,31 +52,31 @@ public partial class ManageCaregiverPage : ContentPage
                 return;
             }
 
-            // 1. Pobierz listê zaakceptowanych opiekunów
+            // 1. Get list of accepted caregivers
             System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetCaregiversAsync");
             var caregivers = await _firestoreService.GetCaregiversAsync(userId, idToken);
 
             System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {caregivers.Count} accepted caregivers");
 
-            // 2. Pobierz listê oczekuj¹cych zaproszeñ WYS£ANYCH przez bie¿¹cego u¿ytkownika (caretaker)
+            // 2. Get list of sent pending invitations
             System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetSentPendingInvitationsAsync");
             var sentPendingInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
 
             System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {sentPendingInvitations.Count} sent pending invitations");
 
-            // 3. Pobierz listê odrzuconych zaproszeñ WYS£ANYCH przez bie¿¹cego u¿ytkownika (caretaker)
+            // 3. Get list of sent rejected invitations
             System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetSentRejectedInvitationsAsync");
             var sentRejectedInvitations = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
 
             System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {sentRejectedInvitations.Count} sent rejected invitations");
 
-            // 4. Dodaj zaakceptowanych opiekunów
+            // 4. Add accepted caregivers
             foreach (var caregiver in caregivers)
             {
                 System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding accepted caregiver {caregiver.FirstName}");
                 Caregivers.Add(caregiver);
                 
-                // Pobierz ID zaproszenia dla tego opiekuna (jeœli istnieje)
+                // Get invitation ID for this caregiver (if it exists)
                 var invitationId = await GetInvitationIdForCaregiverAsync(userId, caregiver.UserId, idToken);
                 if (!string.IsNullOrEmpty(invitationId))
                 {
@@ -84,7 +85,7 @@ public partial class ManageCaregiverPage : ContentPage
                 }
             }
 
-            // 5. Dodaj wys³ane oczekuj¹ce zaproszenia jako caregivers ze statusem "pending"
+            // 5. Add sent pending invitations as caregivers with "pending" status
             foreach (var invitation in sentPendingInvitations)
             {
                 System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
@@ -99,10 +100,10 @@ public partial class ManageCaregiverPage : ContentPage
                 });
             }
 
-            // 6. Dodaj wys³ane odrzucone zaproszenia jako caregivers ze statusem "rejected"
+            // 6. Add sent rejected invitations as caregivers with "rejected" status
             foreach (var invitation in sentRejectedInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent rejected invitation to {invitation.ToUserEmail}");
+                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent rejected invitation to {invitation.ToUserEmail}, status: {invitation.Status}");
                 Caregivers.Add(new CaregiverInfo
                 {
                     UserId = invitation.ToUserId,
