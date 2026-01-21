@@ -29,7 +29,7 @@
         <Label 
             Text="Informacje alarmowe"
             FontSize="12"
-            TextColor="Black" 
+            TextColor="Grey" 
             HorizontalOptions="Center" >
             
             <Label.GestureRecognizers>

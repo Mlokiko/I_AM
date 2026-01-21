@@ -71,7 +71,7 @@
                 Text="Informacje alarmowe"
                 FontSize="12"
                 Padding="20"
-                TextColor="Black" 
+                TextColor="Grey" 
                 HorizontalOptions="Center" >
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnLabelTapped" />
