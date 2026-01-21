@@ -61,6 +61,10 @@ namespace I_AM.Pages.CareGiver
                 await Shell.Current.GoToAsync($"//{nameof(LandingPage)}");
             }
         }
+        private async void OnLabelTapped(object sender, TappedEventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(InformationPage));
+        }
     }
 }
 

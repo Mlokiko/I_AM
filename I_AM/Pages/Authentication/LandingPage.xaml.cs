@@ -44,7 +44,7 @@ namespace I_AM.Pages.Authentication
         {
             await Shell.Current.GoToAsync(nameof(RegisterPage));
         }
-        private async void OnSpanTapped(object sender, TappedEventArgs e)
+        private async void OnLabelTapped(object sender, TappedEventArgs e)
         {
             await Shell.Current.GoToAsync(nameof(InformationPage));
         }

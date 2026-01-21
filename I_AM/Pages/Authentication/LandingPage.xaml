@@ -14,22 +14,6 @@
         HorizontalOptions="Center" 
         Aspect="AspectFit" />
 
-        <Label>
-            <Label.FormattedText>
-                <FormattedString>
-                    <Span Text="Aplikacja dla ludzi w potrzebie. " />
-                    <Span Text="Kliknij po więcej informacji"
-                  TextColor="LightBlue" 
-                  TextDecorations="Underline">
-                        <Span.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnSpanTapped" />
-                        </Span.GestureRecognizers>
-                    </Span>
-                </FormattedString>
-            </Label.FormattedText>
-        </Label>
-
-
         <Button 
             x:Name="MyLoginButton"
             Text="Logowanie"
@@ -41,6 +25,17 @@
             Text="Rejestracja"
             Clicked="OnRegisterButtonClicked" 
             HorizontalOptions="Center" />
+
+        <Label 
+            Text="Informacje alarmowe"
+            FontSize="12"
+            TextColor="Grey" 
+            HorizontalOptions="Center" >
+            
+            <Label.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnLabelTapped" />
+            </Label.GestureRecognizers>
+        </Label>
 
     </VerticalStackLayout>
 </ContentPage>
