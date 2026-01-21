@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-         xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-         xmlns:local="clr-namespace:I_AM.Pages.Main"
-         x:Class="I_AM.Pages.Main.NotificationPage"
-         Title="Powiadomienia"
-         BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
+xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+xmlns:local="clr-namespace:I_AM.Pages.Main"
+x:Class="I_AM.Pages.Main.NotificationPage"
+Title="Powiadomienia"
+Shell.NavBarIsVisible="False"
+BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
 <VerticalStackLayout Padding="20" Spacing="20" VerticalOptions="FillAndExpand">
         

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="I_AM.Pages.Main.InformationPage"
              Title="Informacje"
-             Shell.NavBarIsVisible="True"
+             Shell.NavBarIsVisible="False"
              BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
     <ScrollView >
         <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*" RowSpacing="0">
