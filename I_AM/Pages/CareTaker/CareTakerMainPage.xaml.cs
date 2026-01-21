@@ -56,7 +56,8 @@ namespace I_AM.Pages.CareTaker
             if (result)
             {
                 await _authService.LogoutAsync();
-                await Shell.Current.GoToAsync($"//{nameof(LandingPage)}");
+                // Use relative route instead of absolute global route
+                await Shell.Current.GoToAsync(nameof(LandingPage));
             }
         }
         private async void OnLabelTapped(object sender, TappedEventArgs e)

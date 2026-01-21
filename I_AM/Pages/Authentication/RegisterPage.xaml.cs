@@ -124,12 +124,22 @@ public partial class RegisterPage : ContentPage
             if (saveSuccess && publicSaveSuccess)
             {
                 await DisplayAlert("Sukces", "Rejestracja powiod³a siê! Twój profil zosta³ zapisany.", "OK");
-                await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+                // Navigate to appropriate page based on auth state
+                if (Application.Current?.MainPage is AppShell appShell)
+                {
+                    await appShell.NavigateToAppropriatePageAsync();
+                }
+                else
+                {
+                    // Fallback: use relative route
+                    await Shell.Current.GoToAsync(nameof(LoginPage));
+                }
             }
             else
             {
                 await DisplayAlert("Ostrze¿enie", "Rejestracja powiod³a siê, ale nie uda³o siê zapisaæ profilu. Spróbuj póŸniej.", "OK");
-                await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+                // Use relative route for fallback
+                await Shell.Current.GoToAsync(nameof(LoginPage));
             }
         }
         else
@@ -142,6 +152,6 @@ public partial class RegisterPage : ContentPage
 
     private async void OnBackToLoginClicked(object sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+        await Shell.Current.GoToAsync(nameof(LoginPage));
     }
 }
