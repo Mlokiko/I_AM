@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.Pages.Main.SurveyDetailsPage"
+             Title="Szczegoly wyniku"
+             BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
+
+    <Grid RowDefinitions="Auto,*" Padding="16" RowSpacing="16">
+        <!-- Summary -->
+        <Frame Grid.Row="0" Padding="16" CornerRadius="12"
+               BorderColor="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}"
+               HasShadow="True">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="{Binding Session.CompletedAt, StringFormat='Ukonczono: {0:dd.MM.yyyy HH:mm}'}"
+                       FontSize="14"
+                       TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+
+                <HorizontalStackLayout Spacing="16">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="FillAndExpand">
+                        <Label Text="Laczne punkty" FontSize="12"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                        <Label Text="{Binding Session.TotalPoints, StringFormat='{0:F2}'}"
+                               FontSize="24" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="FillAndExpand">
+                        <Label Text="Wynik" FontSize="12"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                        <Label Text="{Binding Session.PercentageScore, StringFormat='{0:F0}%'}"
+                               FontSize="24" FontAttributes="Bold"
+                               TextColor="{Binding Session.PercentageScore, Converter={StaticResource PercentageColorConverter}}" />
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+
+                <ProgressBar Progress="{Binding Session.PercentageScore, Converter={StaticResource PercentageConverter}}"
+                             ProgressColor="{Binding Session.PercentageScore, Converter={StaticResource PercentageColorConverter}}"
+                             BackgroundColor="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}" />
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Answers -->
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Answers}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="16" Margin="0,8" CornerRadius="12"
+                           BorderColor="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}"
+                           HasShadow="True">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding QuestionText}" FontSize="14" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                                   LineBreakMode="WordWrap" />
+                            <Label Text="{Binding SelectedOption, StringFormat='Odpowiedz: {0}'}" FontSize="13"
+                                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                            <Label Text="{Binding SelectedOptionPoints, StringFormat='Punkty: {0:F2}'}" FontSize="12"
+                                   TextColor="{Binding SelectedOptionPoints, Converter={StaticResource PointsColorConverter}}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

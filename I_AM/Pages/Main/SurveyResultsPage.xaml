@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.Pages.Main.SurveyResultsPage"
+             Title="Wyniki testow"
+             BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
+
+    <Grid RowDefinitions="Auto,*" Padding="16" RowSpacing="16">
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Spacing="8">
+            <Label Text="Historia wynikow"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+        </VerticalStackLayout>
+
+        <!-- Results List -->
+        <CollectionView x:Name="ResultsCollectionView"
+                        Grid.Row="1"
+                        ItemsSource="{Binding TestSessions}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="16" Margin="0,8" CornerRadius="12" 
+                           BorderColor="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}"
+                           HasShadow="True">
+                        <VerticalStackLayout Spacing="12">
+                            <!-- Date -->
+                            <Label Text="{Binding CompletedAt, StringFormat='Uko�czono: {0:dd.MM.yyyy HH:mm}'}"
+                                   FontSize="14"
+                                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+
+                            <!-- Score -->
+                            <HorizontalStackLayout Spacing="16">
+                                <VerticalStackLayout Spacing="4" HorizontalOptions="FillAndExpand">
+                                    <Label Text="Punkty"
+                                           FontSize="12"
+                                           TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                                    <Label Text="{Binding TotalPoints, StringFormat='{0:F2} / {1:F2}'}"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="4" HorizontalOptions="FillAndExpand">
+                                    <Label Text="Wynik"
+                                           FontSize="12"
+                                           TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                                    <Label Text="{Binding PercentageScore, StringFormat='{0:F0}%'}"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding PercentageScore, Converter={StaticResource PercentageColorConverter}}" />
+                                </VerticalStackLayout>
+                            </HorizontalStackLayout>
+
+                            <!-- Progress Bar -->
+                            <ProgressBar Progress="{Binding PercentageScore, Converter={StaticResource PercentageConverter}}"
+                                         ProgressColor="{Binding PercentageScore, Converter={StaticResource PercentageColorConverter}}"
+                                         BackgroundColor="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray700}}" />
+
+                            <!-- View Details Button -->
+                            <Button Text="Pokaz szczegoly"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ViewDetailsCommand}"
+                                    CommandParameter="{Binding .}"
+                                    FontSize="14"
+                                    Padding="8"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Empty State -->
+        <VerticalStackLayout Grid.Row="1" 
+                           Spacing="16"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center">
+            <Label Text="Brak wynik�w"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}"
+                   x:Name="EmptyLabel"
+                   IsVisible="False" />
+            <Label Text="Nie masz jeszcze �adnych zapisanych wynik�w test�w"
+                   FontSize="14"
+                   TextColor="{AppThemeBinding Light={StaticResource Gray500}, Dark={StaticResource Gray500}}"
+                   x:Name="EmptySubLabel"
+                   IsVisible="False" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

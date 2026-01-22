@@ -42,6 +42,19 @@
         ContentTemplate="{DataTemplate main:ManageOwnAccountPage}"
         Route="ManageOwnAccountPage" />
 
+    <ShellContent 
+        Title="Test" 
+        Route="survey" 
+        ContentTemplate="{DataTemplate main:SurveyPage}" />
+    
+    <ShellContent 
+        Title="Wyniki" 
+        Route="surveyresults" 
+        ContentTemplate="{DataTemplate main:SurveyResultsPage}" />
+    
+    <ShellContent 
+        Route="surveydetails" 
+        ContentTemplate="{DataTemplate main:SurveyDetailsPage}" />
 </Shell>
 
 

@@ -547,6 +547,360 @@ public class FirestoreService : IFirestoreService
 
     #endregion
 
+    #region Question Management Operations
+
+    public async Task<bool> SaveQuestionAsync(string caretakerId, string caregiverId, Question question, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            question.Id = string.IsNullOrEmpty(question.Id) ? Guid.NewGuid().ToString() : question.Id;
+            question.CaretakerId = caretakerId;
+            question.CaregiverId = caregiverId;
+            question.UpdatedAt = DateTime.UtcNow;
+
+            var url = BuildFirestoreUrl("questions", question.Id);
+            var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "question");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error saving question: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<Question?> GetQuestionAsync(string questionId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(questionId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return null;
+            }
+
+            var url = BuildFirestoreUrl("questions", questionId);
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("fields", out var fields))
+            {
+                return null;
+            }
+
+            return MapToQuestion(jsonDocument.RootElement, fields);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching question: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<Question>> GetCaregiverQuestionsAsync(string caretakerId, string caregiverId, string idToken)
+    {
+        var questions = new List<Question>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return questions;
+            }
+
+            var url = BuildFirestoreUrl("questions");
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
+            {
+                return questions;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
+                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
+
+                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                {
+                    var question = MapToQuestion(doc, fields);
+                    questions.Add(question);
+                }
+            }
+
+            return questions.OrderBy(q => q.Order).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching questions: {ex.Message}");
+            return questions;
+        }
+    }
+
+    public async Task<bool> UpdateQuestionAsync(string caretakerId, string caregiverId, Question question, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(question.Id) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            question.UpdatedAt = DateTime.UtcNow;
+            var url = BuildFirestoreUrl("questions", question.Id);
+            var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "question");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error updating question: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteQuestionAsync(string questionId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(questionId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            var url = BuildFirestoreUrl("questions", questionId);
+            return await SendDeleteRequestAsync(url, idToken, "question");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error deleting question: {ex.Message}");
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region Answer Operations
+
+    public async Task<bool> SaveAnswerAsync(string caretakerId, string caregiverId, QuestionAnswer answer, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            answer.Id = string.IsNullOrEmpty(answer.Id) ? Guid.NewGuid().ToString() : answer.Id;
+            answer.CaretakerId = caretakerId;
+            answer.CaregiverId = caregiverId;
+
+            var url = BuildFirestoreUrl("answers", answer.Id);
+            var payloadJson = FirestorePayloadBuilder.BuildAnswerPayload(answer);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "answer");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error saving answer: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<List<QuestionAnswer>> GetCaretakerAnswersAsync(string caretakerId, string caregiverId, string idToken)
+    {
+        var answers = new List<QuestionAnswer>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return answers;
+            }
+
+            var url = BuildFirestoreUrl("answers");
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
+            {
+                return answers;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
+                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
+
+                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                {
+                    var answer = MapToQuestionAnswer(doc, fields);
+                    answers.Add(answer);
+                }
+            }
+
+            return answers.OrderByDescending(a => a.AnsweredAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching answers: {ex.Message}");
+            return answers;
+        }
+    }
+
+    #endregion
+
+    #region Test Session Operations
+
+    public async Task<bool> SaveTestSessionAsync(string caretakerId, string caregiverId, TestSession session, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            session.Id = string.IsNullOrEmpty(session.Id) ? Guid.NewGuid().ToString() : session.Id;
+            session.CaretakerId = caretakerId;
+            session.CaregiverId = caregiverId;
+
+            var url = BuildFirestoreUrl("test_sessions", session.Id);
+            var payloadJson = FirestorePayloadBuilder.BuildTestSessionPayload(session);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "test session");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error saving test session: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<TestSession?> GetLatestTestSessionAsync(string caretakerId, string caregiverId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return null;
+            }
+
+            var sessions = await GetTestSessionsAsync(caretakerId, caregiverId, idToken);
+            return sessions.OrderByDescending(s => s.CompletedAt).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching latest test session: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<TestSession>> GetTestSessionsAsync(string caretakerId, string caregiverId, string idToken)
+    {
+        var sessions = new List<TestSession>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return sessions;
+            }
+
+            var url = BuildFirestoreUrl("test_sessions");
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
+            {
+                return sessions;
+            }
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
+                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
+
+                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                {
+                    var session = MapToTestSession(doc, fields);
+                    sessions.Add(session);
+                }
+            }
+
+            return sessions.OrderByDescending(s => s.CompletedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching test sessions: {ex.Message}");
+            return sessions;
+        }
+    }
+
+    #endregion
+
+    #region Mapping Methods
+
+    private static Question MapToQuestion(JsonElement doc, JsonElement fields)
+    {
+        return new Question
+        {
+            Id = FirestoreValueExtractor.GetDocumentId(doc),
+            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
+            Text = FirestoreValueExtractor.GetStringValue(fields, "text"),
+            Description = FirestoreValueExtractor.GetStringValue(fields, "description"),
+            Type = FirestoreValueExtractor.GetStringValue(fields, "type"),
+            Options = FirestoreValueExtractor.GetQuestionOptions(fields, "options"),
+            IsActive = FirestoreValueExtractor.GetBoolValue(fields, "isActive"),
+            CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+            UpdatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "updatedAt"),
+            Order = FirestoreValueExtractor.GetIntValue(fields, "order")
+        };
+    }
+
+    private static QuestionAnswer MapToQuestionAnswer(JsonElement doc, JsonElement fields)
+    {
+        return new QuestionAnswer
+        {
+            Id = FirestoreValueExtractor.GetDocumentId(doc),
+            QuestionId = FirestoreValueExtractor.GetStringValue(fields, "questionId"),
+            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
+            SelectedOption = FirestoreValueExtractor.GetStringValue(fields, "selectedOption"),
+            SelectedOptionPoints = FirestoreValueExtractor.GetDecimalValue(fields, "selectedOptionPoints"),
+            OpenAnswer = FirestoreValueExtractor.GetStringValue(fields, "openAnswer"),
+            AnsweredAt = FirestoreValueExtractor.GetTimestampValue(fields, "answeredAt")
+        };
+    }
+
+    private static TestSession MapToTestSession(JsonElement doc, JsonElement fields)
+    {
+        return new TestSession
+        {
+            Id = FirestoreValueExtractor.GetDocumentId(doc),
+            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
+            TotalPoints = FirestoreValueExtractor.GetDecimalValue(fields, "totalPoints"),
+            MaxPoints = FirestoreValueExtractor.GetDecimalValue(fields, "maxPoints"),
+            PercentageScore = FirestoreValueExtractor.GetDecimalValue(fields, "percentageScore"),
+            CompletedAt = FirestoreValueExtractor.GetTimestampValue(fields, "completedAt")
+        };
+    }
+
+    #endregion
+
     #region Private Helper Methods
 
     /// <summary>

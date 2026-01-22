@@ -75,4 +75,26 @@ public static class AppConstants
         public const string AccountDisabled = "Konto zosta³o wy³¹czone";
         public const string OperationFailed = "Operacja nie powiod³a siê";
     }
+
+    /// <summary>
+    /// Question type constants
+    /// </summary>
+    public static class QuestionType
+    {
+        public const string Closed = "closed";
+        public const string Open = "open";
+    }
+
+    /// <summary>
+    /// Survey messages
+    /// </summary>
+    public static class SurveyMessages
+    {
+        public const string QuestionsSaved = "Pytania zosta³y zapisane";
+        public const string QuestionDeleted = "Pytanie zosta³o usuniête";
+        public const string AnswersSubmitted = "Twoje odpowiedzi zosta³y wys³ane";
+        public const string AllQuestionsRequired = "Proszê odpowiedzieæ na wszystkie pytania";
+        public const string NoQuestionsAvailable = "Opiekun nie przygotowa³ jeszcze pytañ";
+        public const string NoResults = "Brak zapisanych wyników testów";
+    }
 }

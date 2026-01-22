@@ -4,6 +4,8 @@ using I_AM.Pages.Authentication;
 using I_AM.Pages.Main;
 using I_AM.Pages.CareTaker;
 using I_AM.Pages.CareGiver;
+using MainSurveyPage = I_AM.Pages.Main.SurveyPage;
+using CareTakerSurveyPage = I_AM.Pages.Main.SurveyPage;
 
 namespace I_AM
 {
@@ -29,6 +31,8 @@ namespace I_AM
             Routing.RegisterRoute(nameof(CalendarPage), typeof(CalendarPage));
             Routing.RegisterRoute(nameof(DailyActivityPage), typeof(DailyActivityPage));
             Routing.RegisterRoute(nameof(EditCareTakerQuestionsPage), typeof(EditCareTakerQuestionsPage));
+            Routing.RegisterRoute(nameof(SurveyPage), typeof(SurveyPage));
+            Routing.RegisterRoute("CareTakerSurveyPage", typeof(SurveyPage));
 
             _authService = ServiceHelper.GetService<IAuthenticationService>();
             _firestoreService = ServiceHelper.GetService<IFirestoreService>();
