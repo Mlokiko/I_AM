@@ -107,66 +107,6 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<(UserProfile? profile, string? userId)> GetUserProfileByEmailAsync(string email, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(idToken))
-            {
-                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: email lub idToken s¹ puste");
-                return (null, null);
-            }
-
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Szukam u¿ytkownika z emailem: {email}");
-
-            var url = BuildFirestoreUrl(COLLECTION_USERS);
-            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
-            
-            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
-            {
-                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Brak 'documents' w odpowiedzi");
-                return (null, null);
-            }
-
-            var docsCount = 0;
-            try { docsCount = documents.GetArrayLength(); } catch { }
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Liczba dokumentów: {docsCount}");
-
-            foreach (var doc in documents.EnumerateArray())
-            {
-                if (!doc.TryGetProperty("fields", out var fields))
-                {
-                    continue;
-                }
-
-                var docEmail = FirestoreValueExtractor.GetStringValue(fields, FIELD_EMAIL);
-                
-                if (!string.IsNullOrEmpty(docEmail))
-                {
-                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Sprawdzam email: {docEmail} vs {email}");
-                }
-
-                if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
-                {
-                    var userId = FirestoreValueExtractor.GetDocumentId(doc);
-                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
-
-                    var profile = MapToUserProfile(fields);
-                    profile.Email = docEmail;
-                    return (profile, userId);
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Nie znaleziono u¿ytkownika z emailem: {email}");
-            return (null, null);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync - B³¹d: {ex.Message}\n{ex.StackTrace}");
-            return (null, null);
-        }
-    }
-
     #endregion
 
     #region Public Profile Operations
@@ -415,7 +355,7 @@ public class FirestoreService : IFirestoreService
             }
 
             var caretakerUrl = BuildFirestoreUrl(COLLECTION_USERS, caretakerId, $"updateMask.fieldPaths={FIELD_CAREGIVERS_ID}");
-            var caretakerPayload = BuildArrayFieldPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
+            var caretakerPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
             
             return await SendPatchRequestAsync(caretakerUrl, caretakerPayload, idToken, "caretaker profile");
         }
@@ -490,7 +430,7 @@ public class FirestoreService : IFirestoreService
 
             // Update caregiver profile using targeted update
             var caregiverUrl = BuildFirestoreUrl(COLLECTION_USERS, caregiverId, $"updateMask.fieldPaths={FIELD_CARETAKERS_ID}");
-            var caregiverPayload = BuildArrayFieldPayload(FIELD_CARETAKERS_ID, caregiverProfile.CaretakersID);
+            var caregiverPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CARETAKERS_ID, caregiverProfile.CaretakersID);
             
             return await SendPatchRequestAsync(caregiverUrl, caregiverPayload, idToken, "caregiver profile");
         }
@@ -692,46 +632,6 @@ public class FirestoreService : IFirestoreService
             CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
             RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
         };
-    }
-
-    /// <summary>
-    /// Builds a JSON payload for updating a string array field
-    /// </summary>
-    private static string BuildArrayFieldPayload(string fieldName, List<string> values)
-    {
-        using (var stream = new MemoryStream())
-        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
-
-            writer.WritePropertyName(fieldName);
-            writer.WriteStartObject();
-            writer.WritePropertyName("arrayValue");
-            writer.WriteStartObject();
-
-            if (values.Count > 0)
-            {
-                writer.WritePropertyName("values");
-                writer.WriteStartArray();
-                foreach (var value in values)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("stringValue", value);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
-        }
     }
 
     #endregion
