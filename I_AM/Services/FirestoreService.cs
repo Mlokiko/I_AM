@@ -229,12 +229,28 @@ public class FirestoreService : IFirestoreService
             (inv, uid) => inv.FromUserId == uid && inv.Status == STATUS_REJECTED);
     }
 
+    public async Task<List<CaregiverInvitation>> GetReceivedRejectedInvitationsAsync(string userId, string idToken)
+    {
+        return await GetInvitationsAsync(
+            userId, 
+            idToken, 
+            (inv, uid) => inv.ToUserId == uid && inv.Status == STATUS_REJECTED);
+    }
+
     public async Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken)
     {
         return await GetInvitationsAsync(
             userId, 
             idToken, 
             (inv, uid) => inv.FromUserId == uid);
+    }
+
+    public async Task<List<CaregiverInvitation>> GetAllReceivedInvitationsAsync(string userId, string idToken)
+    {
+        return await GetInvitationsAsync(
+            userId, 
+            idToken, 
+            (inv, uid) => inv.ToUserId == uid);
     }
 
     /// <summary>
@@ -441,6 +457,46 @@ public class FirestoreService : IFirestoreService
         }
     }
 
+    public async Task<bool> RemoveCaretakerAsync(string userId, string caretakerId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caretakerId))
+            {
+                return false;
+            }
+
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            if (userProfile == null)
+                return false;
+
+            userProfile.CaretakersID.Remove(caretakerId);
+
+            var caretakerProfile = await GetUserProfileAsync(caretakerId, idToken);
+            if (caretakerProfile == null)
+                return false;
+
+            caretakerProfile.CaregiversID.Remove(userId);
+
+            // Update user profile (normal update)
+            if (!await SaveUserProfileAsync(userId, userProfile, idToken))
+            {
+                return false;
+            }
+
+            // Update caretaker profile using targeted update
+            var caretakerUrl = BuildFirestoreUrl(COLLECTION_USERS, caretakerId, $"updateMask.fieldPaths={FIELD_CAREGIVERS_ID}");
+            var caretakerPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
+            
+            return await SendPatchRequestAsync(caretakerUrl, caretakerPayload, idToken, "caretaker profile");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error removing caretaker: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
     public async Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken)
     {
         var caregivers = new List<CaregiverInfo>();
@@ -482,6 +538,50 @@ public class FirestoreService : IFirestoreService
         {
             System.Diagnostics.Debug.WriteLine($"Error fetching caregivers: {ex.Message}\n{ex.StackTrace}");
             return caregivers;
+        }
+    }
+
+    public async Task<List<CaregiverInfo>> GetCaretakersAsync(string userId, string idToken)
+    {
+        var caretakers = new List<CaregiverInfo>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return caretakers;
+            }
+
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            
+            if (userProfile?.CaretakersID.Count == 0)
+            {
+                return caretakers;
+            }
+
+            foreach (var caretakerId in userProfile!.CaretakersID)
+            {
+                var profile = await GetUserProfileAsync(caretakerId, idToken);
+                if (profile != null)
+                {
+                    caretakers.Add(new CaregiverInfo
+                    {
+                        UserId = caretakerId,
+                        Email = profile.Email,
+                        FirstName = profile.FirstName,
+                        LastName = profile.LastName,
+                        Status = STATUS_ACCEPTED,
+                        AddedAt = profile.CreatedAt
+                    });
+                }
+            }
+
+            return caretakers;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching caretakers: {ex.Message}\n{ex.StackTrace}");
+            return caretakers;
         }
     }
 

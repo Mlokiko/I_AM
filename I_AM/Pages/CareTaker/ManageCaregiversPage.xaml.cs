@@ -39,6 +39,7 @@ public partial class ManageCaregiversPage : ContentPage
             CaregiversLoadingIndicator.IsVisible = true;
             ErrorLabel.IsVisible = false;
             Caregivers.Clear();
+            _acceptedCaregiverInvitationIds.Clear();
 
             var userId = await _authService.GetCurrentUserIdAsync();
             var idToken = await _authService.GetCurrentIdTokenAsync();
@@ -70,7 +71,19 @@ public partial class ManageCaregiversPage : ContentPage
 
             System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {sentRejectedInvitations.Count} sent rejected invitations");
 
-            // 4. Add accepted caregivers
+            // 4. Get list of received pending invitations (from caregivers)
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetPendingInvitationsAsync");
+            var receivedPendingInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {receivedPendingInvitations.Count} received pending invitations");
+
+            // 5. Get list of received rejected invitations
+            System.Diagnostics.Debug.WriteLine("[ManageCaregiverPage] LoadCaregiversAsync: Calling GetReceivedRejectedInvitationsAsync");
+            var receivedRejectedInvitations = await _firestoreService.GetReceivedRejectedInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Retrieved {receivedRejectedInvitations.Count} received rejected invitations");
+
+            // 6. Add accepted caregivers
             foreach (var caregiver in caregivers)
             {
                 System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding accepted caregiver {caregiver.FirstName}");
@@ -85,7 +98,7 @@ public partial class ManageCaregiversPage : ContentPage
                 }
             }
 
-            // 5. Add sent pending invitations as caregivers with "pending" status
+            // 7. Add sent pending invitations as caregivers with "pending" status
             foreach (var invitation in sentPendingInvitations)
             {
                 System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
@@ -100,7 +113,7 @@ public partial class ManageCaregiversPage : ContentPage
                 });
             }
 
-            // 6. Add sent rejected invitations as caregivers with "rejected" status
+            // 8. Add sent rejected invitations as caregivers with "rejected" status
             foreach (var invitation in sentRejectedInvitations)
             {
                 System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent rejected invitation to {invitation.ToUserEmail}, status: {invitation.Status}");
@@ -110,6 +123,36 @@ public partial class ManageCaregiversPage : ContentPage
                     Email = invitation.ToUserEmail,
                     FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
                     LastName = string.Empty,
+                    Status = "rejected",
+                    AddedAt = invitation.CreatedAt
+                });
+            }
+
+            // 9. Add received pending invitations as caregivers with "pending" status
+            foreach (var invitation in receivedPendingInvitations)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding received pending invitation from {invitation.FromUserName}");
+                Caregivers.Add(new CaregiverInfo
+                {
+                    UserId = invitation.FromUserId,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
+                    LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
+                    Status = "pending",
+                    AddedAt = invitation.CreatedAt
+                });
+            }
+
+            // 10. Add received rejected invitations as caregivers with "rejected" status
+            foreach (var invitation in receivedRejectedInvitations)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding received rejected invitation from {invitation.FromUserName}");
+                Caregivers.Add(new CaregiverInfo
+                {
+                    UserId = invitation.FromUserId,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
+                    LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "rejected",
                     AddedAt = invitation.CreatedAt
                 });
@@ -185,7 +228,7 @@ public partial class ManageCaregiversPage : ContentPage
             }
 
             // 1. Pobierz profil u¿ytkownika po email
-            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Wywo³ywam GetUserPublicProfileByEmailAsync");
+            System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Wywo³ujê GetUserPublicProfileByEmailAsync");
             var (caregiverPublicProfile, caregiverId) = await _firestoreService.GetUserPublicProfileByEmailAsync(caregiverEmail, idToken);
 
             System.Diagnostics.Debug.WriteLine($"OnAddCaregiverClicked: Wynik - Profile: {caregiverPublicProfile != null}, UserId: {caregiverId}");
@@ -280,44 +323,67 @@ public partial class ManageCaregiversPage : ContentPage
 
             bool success = false;
 
-            // Jeœli status to "pending" lub "rejected", usuñ zaproszenie z bazy
+            // If status is "pending" or "rejected", delete the invitation
             if (caregiver.Status == "pending" || caregiver.Status == "rejected")
             {
                 System.Diagnostics.Debug.WriteLine($"[OnRemoveCaregiverClicked] Deleting {caregiver.Status} invitation for {caregiver.Email}");
-                // Najpierw trzeba znaleŸæ ID zaproszenia
+                
+                // Check if this is a sent invitation
                 if (caregiver.Status == "pending")
                 {
-                    var pendingInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
-                    var invitation = pendingInvitations.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
-                    if (invitation != null)
+                    var sentInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
+                    var sentPending = sentInvitations.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
+                    
+                    if (sentPending != null)
                     {
-                        success = await _firestoreService.DeleteCaregiverInvitationAsync(invitation.Id, idToken);
+                        success = await _firestoreService.DeleteCaregiverInvitationAsync(sentPending.Id, idToken);
+                    }
+                    else
+                    {
+                        // Check if this is a received invitation
+                        var receivedInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
+                        var receivedPending = receivedInvitations.FirstOrDefault(i => i.FromUserId == caregiver.UserId);
+                        if (receivedPending != null)
+                        {
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(receivedPending.Id, idToken);
+                        }
                     }
                 }
                 else if (caregiver.Status == "rejected")
                 {
-                    var rejectedInvitations = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
-                    var invitation = rejectedInvitations.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
-                    if (invitation != null)
+                    var sentRejected = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
+                    var sentRejectedInv = sentRejected.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
+                    
+                    if (sentRejectedInv != null)
                     {
-                        success = await _firestoreService.DeleteCaregiverInvitationAsync(invitation.Id, idToken);
+                        success = await _firestoreService.DeleteCaregiverInvitationAsync(sentRejectedInv.Id, idToken);
+                    }
+                    else
+                    {
+                        // Check if this is a received rejected invitation
+                        var receivedRejected = await _firestoreService.GetReceivedRejectedInvitationsAsync(userId, idToken);
+                        var receivedRejectedInv = receivedRejected.FirstOrDefault(i => i.FromUserId == caregiver.UserId);
+                        if (receivedRejectedInv != null)
+                        {
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(receivedRejectedInv.Id, idToken);
+                        }
                     }
                 }
             }
             else
             {
-                // W innym wypadku (accepted), usuñ z listy opiekunów
+                // Otherwise (accepted), remove from caregivers list
                 System.Diagnostics.Debug.WriteLine($"[OnRemoveCaregiverClicked] Removing accepted caregiver {caregiver.Email}");
                 success = await _firestoreService.RemoveCaregiverAsync(userId, caregiver.UserId, idToken);
                 
-                // Jeœli opiekun zosta³ pomyœlnie usuniêty, usuñ równie¿ zaproszenie z bazy
+                // If caregiver was successfully removed, also delete the invitation from database
                 if (success && _acceptedCaregiverInvitationIds.TryGetValue(caregiver.UserId, out var invitationId))
                 {
                     System.Diagnostics.Debug.WriteLine($"[OnRemoveCaregiverClicked] Deleting invitation {invitationId} for removed caregiver");
                     var deleteSuccess = await _firestoreService.DeleteCaregiverInvitationAsync(invitationId, idToken);
                     System.Diagnostics.Debug.WriteLine($"[OnRemoveCaregiverClicked] Invitation deletion result: {deleteSuccess}");
                     
-                    // Usuñ z s³ownika
+                    // Remove from dictionary
                     _acceptedCaregiverInvitationIds.Remove(caregiver.UserId);
                 }
             }

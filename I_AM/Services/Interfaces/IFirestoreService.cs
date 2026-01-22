@@ -21,12 +21,16 @@ public interface IFirestoreService
     Task<List<CaregiverInvitation>> GetPendingInvitationsAsync(string userId, string idToken);
     Task<List<CaregiverInvitation>> GetSentPendingInvitationsAsync(string userId, string idToken);
     Task<List<CaregiverInvitation>> GetSentRejectedInvitationsAsync(string userId, string idToken);
+    Task<List<CaregiverInvitation>> GetReceivedRejectedInvitationsAsync(string userId, string idToken);
     Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken);
+    Task<List<CaregiverInvitation>> GetAllReceivedInvitationsAsync(string userId, string idToken);
     Task<bool> AcceptCaregiverInvitationAsync(string userId, string invitationId, string caregiverId, string idToken);
     Task<bool> RejectCaregiverInvitationAsync(string userId, string invitationId, string idToken);
     Task<bool> DeleteCaregiverInvitationAsync(string invitationId, string idToken);
     
-    // Caregiver Relationship Operations
+    // Caregiver and Caretaker Relationship Operations
     Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken);
+    Task<bool> RemoveCaretakerAsync(string userId, string caretakerId, string idToken);
     Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken);
+    Task<List<CaregiverInfo>> GetCaretakersAsync(string userId, string idToken);
 }
