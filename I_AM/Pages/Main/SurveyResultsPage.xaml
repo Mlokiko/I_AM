@@ -59,7 +59,7 @@
 
                             <!-- View Details Button -->
                             <Button Text="Pokaz szczegoly"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ViewDetailsCommand}"
+                                    Command="{Binding BindingContext.ViewDetailsCommand, Source={x:Reference Name=ResultsCollectionView}}"
                                     CommandParameter="{Binding .}"
                                     FontSize="14"
                                     Padding="8"

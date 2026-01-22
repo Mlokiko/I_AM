@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:I_AM.Models" 
              x:Class="I_AM.Pages.Main.SurveyPage"
              Title="Test"
              BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
@@ -48,7 +49,7 @@
                                         <Button Text="{Binding Text, StringFormat='{0} ({1} pkt)'}"
                                                 Padding="12"
                                                 Margin="0,4"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectOptionCommand}"
+                                                Command="{Binding BindingContext.SelectOptionCommand, Source={x:Reference Name=QuestionsCollectionView}}"
                                                 CommandParameter="{Binding .}"
                                                 Style="{StaticResource QuestionOptionButtonStyle}" />
                                     </DataTemplate>

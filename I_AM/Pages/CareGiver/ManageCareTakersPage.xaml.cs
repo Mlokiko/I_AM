@@ -366,12 +366,41 @@ public partial class ManageCareTakersPage : ContentPage
             }
 
             // Accept the invitation
-            var success = await _firestoreService.AcceptCaregiverInvitationAsync(userId, invitation.Id, careTaker.UserId, idToken);
+            var success = await _firestoreService.AcceptCaregiverInvitationAsync(
+                userId, 
+                invitation.Id, 
+                careTaker.UserId, 
+                idToken);
 
             if (success)
             {
-                await DisplayAlert("Sukces", $"Zaproszenie zaakceptowane od {careTaker.FirstName}", "OK");
-                // Reload the entire list to get fresh data from Firestore
+                // ===== NOWE: Inicjalizuj pytania =====
+                var seedService = ServiceHelper.GetService<SeedQuestionsService>();
+                var questionsInitialized = await seedService.InitializeDefaultQuestionsAsync(
+                    careTaker.UserId,  // caretakerId
+                    userId,            // caregiverId
+                    idToken);
+
+                if (questionsInitialized)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "[ManageCareTakersPage] Default questions initialized successfully");
+                    await DisplayAlert(
+                        "Sukces", 
+                        $"Zaproszenie zaakceptowane od {careTaker.FirstName}\n\n Pytania zosta³y przygotowane",
+                        "OK");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "[ManageCareTakersPage] Failed to initialize questions");
+                    await DisplayAlert(
+                        "Uwaga", 
+                        $"Zaproszenie zaakceptowane, ale pytania nie mog³y byæ przygotowane",
+                        "OK");
+                }
+                // ===== KONIEC NOWEGO KODU =====
+
                 await LoadCareTakersAsync();
             }
             else

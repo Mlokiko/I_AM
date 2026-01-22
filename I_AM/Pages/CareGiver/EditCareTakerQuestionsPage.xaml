@@ -1,13 +1,96 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-x:Class="I_AM.Pages.Main.EditCareTakerQuestionsPage"
-Title="EditCareTakerQuestionsPage"
-Shell.NavBarIsVisible="False">
-    <VerticalStackLayout>
-        <Label 
-            Text="Edytuj pytania podopiecznego"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.Pages.Main.EditCareTakerQuestionsPage"
+             Title="Zarządzaj pytaniami podopiecznego"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="16" RowSpacing="16">
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Spacing="8">
+            <Label Text="Zarządzaj pytaniami podopiecznego"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+            <Picker x:Name="CareTakerPicker"
+                    Title="Wybierz podopiecznego"
+                    ItemsSource="{Binding CareTakers}"
+                    ItemDisplayBinding="{Binding FirstName, StringFormat='{0}'}"
+                    SelectedItem="{Binding SelectedCareTaker}"
+                    SelectedIndexChanged="OnCareTakerSelected" />
+        </VerticalStackLayout>
+
+        <!-- Questions List -->
+        <CollectionView x:Name="QuestionsCollectionView"
+                        Grid.Row="1"
+                        ItemsSource="{Binding Questions}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <VerticalStackLayout Padding="16" Spacing="12"
+                                       BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
+                                       Margin="0,8">
+                        <!-- Question Text -->
+                        <Label Text="{Binding Text}"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
+                               LineBreakMode="WordWrap" />
+
+                        <!-- Question Type Badge -->
+                        <Label Text="{Binding Type, StringFormat='Typ: {0}'}"
+                               FontSize="12"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+
+                        <!-- Question Description -->
+                        <Label Text="{Binding Description}"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}"
+                               LineBreakMode="WordWrap"
+                               IsVisible="{Binding Description, Converter={StaticResource StringNotNullConverter}}" />
+
+                        <!-- Options for Closed Questions -->
+                        <VerticalStackLayout Spacing="4" IsVisible="{Binding IsClosedQuestion}">
+                            <Label Text="Opcje:" FontSize="12" FontAttributes="Bold" />
+                            <CollectionView ItemsSource="{Binding Options}">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Label Text="{Binding Text, StringFormat='• {0} ({1} pkt)'}"
+                                               FontSize="12"
+                                               Margin="8,0,0,0"
+                                               TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                        </VerticalStackLayout>
+
+                        <!-- Action Buttons -->
+                        <HorizontalStackLayout Spacing="8">
+                            <Button Text="Edytuj"
+                                    Command="{Binding BindingContext.EditQuestionCommand, Source={x:Reference Name=QuestionsCollectionView}}"
+                                    CommandParameter="{Binding .}"
+                                    HorizontalOptions="FillAndExpand"
+                                    BackgroundColor="#2196F3" />
+                            <Button Text="Usuń"
+                                    Command="{Binding BindingContext.DeleteQuestionCommand, Source={x:Reference Name=QuestionsCollectionView}}"
+                                    CommandParameter="{Binding .}"
+                                    HorizontalOptions="FillAndExpand"
+                                    BackgroundColor="#f44336" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Action Buttons -->
+        <VerticalStackLayout Grid.Row="2" Spacing="8">
+            <Button x:Name="AddQuestionButton"
+                    Text="Dodaj pytanie"
+                    Clicked="OnAddQuestionClicked"
+                    Style="{StaticResource PrimaryButtonStyle}" />
+            <Button Text="Powrót"
+                    Clicked="OnBackClicked"
+                    Style="{StaticResource SecondaryButtonStyle}" />
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>

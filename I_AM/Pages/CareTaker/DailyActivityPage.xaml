@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-x:Class="I_AM.Pages.CareTaker.DailyActivityPage"
-Title="DailyActivityPage"
-Shell.NavBarIsVisible="False">
-    <VerticalStackLayout>
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="I_AM.Pages.CareTaker.DailyActivityPage"
+             Title="Codzienna aktywność"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
+    <VerticalStackLayout Padding="16" Spacing="16" VerticalOptions="Center" HorizontalOptions="Center">
         <Label 
             Text="Codzienna aktywność"
-            VerticalOptions="Center" 
+            FontSize="24"
+            FontAttributes="Bold"
+            TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
             HorizontalOptions="Center" />
+        
+        <Button 
+            x:Name="TakeSurveyButton"
+            Text="Odpowiedz na pytania"
+            Clicked="OnTakeSurveyClicked"
+            Style="{StaticResource PrimaryButtonStyle}"
+            Margin="0,20,0,0" />
     </VerticalStackLayout>
 </ContentPage>

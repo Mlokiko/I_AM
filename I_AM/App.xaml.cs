@@ -13,6 +13,7 @@ namespace I_AM
                 .AddSingleton<IAuthenticationStateService, AuthenticationStateService>()
                 .AddSingleton<IAuthenticationService, AuthenticationService>()
                 .AddSingleton<IFirestoreService, FirestoreService>()
+                .AddSingleton<SeedQuestionsService>()
                 .BuildServiceProvider();
 
             ServiceHelper.Initialize(serviceProvider);
