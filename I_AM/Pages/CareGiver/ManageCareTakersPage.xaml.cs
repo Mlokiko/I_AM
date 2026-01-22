@@ -30,6 +30,17 @@ public partial class ManageCareTakersPage : ContentPage
         await LoadCareTakersAsync();
     }
 
+    private void ConfigureButtonVisibility()
+    {
+        // Get the CollectionView element
+        var collectionView = CareTakersCollectionView;
+        if (collectionView?.ItemsSource == null)
+            return;
+
+        // We need to update visibility after items are added
+        // Since we can't directly access template controls, we'll handle this in each button's clicked event
+    }
+
     private async Task LoadCareTakersAsync()
     {
         try
@@ -109,7 +120,8 @@ public partial class ManageCareTakersPage : ContentPage
                     FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
                     LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "pending",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
@@ -124,7 +136,8 @@ public partial class ManageCareTakersPage : ContentPage
                     FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
                     LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "rejected",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
@@ -139,7 +152,8 @@ public partial class ManageCareTakersPage : ContentPage
                     FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
                     LastName = string.Empty,
                     Status = "pending",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
                 });
             }
 
@@ -154,7 +168,8 @@ public partial class ManageCareTakersPage : ContentPage
                     FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
                     LastName = string.Empty,
                     Status = "rejected",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
                 });
             }
 
@@ -289,9 +304,10 @@ public partial class ManageCareTakersPage : ContentPage
         var careTaker = button.BindingContext as CaregiverInfo;
         if (careTaker == null) return;
         
-        if (careTaker.Status != "pending")
+        // Only allow accepting received pending invitations (IsSentByMe = false, Status = "pending")
+        if (careTaker.IsSentByMe || careTaker.Status != "pending")
         {
-            await DisplayAlert("Information", "You can only accept/reject pending invitations", "OK");
+            await DisplayAlert("Information", "You can only accept received pending invitations", "OK");
             return;
         }
 
@@ -359,9 +375,10 @@ public partial class ManageCareTakersPage : ContentPage
         var careTaker = button.BindingContext as CaregiverInfo;
         if (careTaker == null) return;
         
-        if (careTaker.Status != "pending")
+        // Only allow rejecting received pending invitations (IsSentByMe = false, Status = "pending")
+        if (careTaker.IsSentByMe || careTaker.Status != "pending")
         {
-            await DisplayAlert("Information", "You can only accept/reject pending invitations", "OK");
+            await DisplayAlert("Information", "You can only reject received pending invitations", "OK");
             return;
         }
 

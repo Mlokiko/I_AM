@@ -109,7 +109,8 @@ public partial class ManageCaregiversPage : ContentPage
                     FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
                     LastName = string.Empty,
                     Status = "pending",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
                 });
             }
 
@@ -124,7 +125,8 @@ public partial class ManageCaregiversPage : ContentPage
                     FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
                     LastName = string.Empty,
                     Status = "rejected",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
                 });
             }
 
@@ -139,7 +141,8 @@ public partial class ManageCaregiversPage : ContentPage
                     FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
                     LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "pending",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
@@ -154,7 +157,8 @@ public partial class ManageCaregiversPage : ContentPage
                     FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
                     LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "rejected",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
@@ -328,19 +332,22 @@ public partial class ManageCaregiversPage : ContentPage
             {
                 System.Diagnostics.Debug.WriteLine($"[OnRemoveCaregiverClicked] Deleting {caregiver.Status} invitation for {caregiver.Email}");
                 
-                // Check if this is a sent invitation
+                // Check if this is a sent or received invitation using IsSentByMe
                 if (caregiver.Status == "pending")
                 {
-                    var sentInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
-                    var sentPending = sentInvitations.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
-                    
-                    if (sentPending != null)
+                    if (caregiver.IsSentByMe)
                     {
-                        success = await _firestoreService.DeleteCaregiverInvitationAsync(sentPending.Id, idToken);
+                        // This is a sent pending invitation
+                        var sentInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
+                        var sentPending = sentInvitations.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
+                        if (sentPending != null)
+                        {
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(sentPending.Id, idToken);
+                        }
                     }
                     else
                     {
-                        // Check if this is a received invitation
+                        // This is a received pending invitation
                         var receivedInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
                         var receivedPending = receivedInvitations.FirstOrDefault(i => i.FromUserId == caregiver.UserId);
                         if (receivedPending != null)
@@ -351,16 +358,19 @@ public partial class ManageCaregiversPage : ContentPage
                 }
                 else if (caregiver.Status == "rejected")
                 {
-                    var sentRejected = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
-                    var sentRejectedInv = sentRejected.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
-                    
-                    if (sentRejectedInv != null)
+                    if (caregiver.IsSentByMe)
                     {
-                        success = await _firestoreService.DeleteCaregiverInvitationAsync(sentRejectedInv.Id, idToken);
+                        // This is a sent rejected invitation
+                        var sentRejected = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
+                        var sentRejectedInv = sentRejected.FirstOrDefault(i => i.ToUserId == caregiver.UserId);
+                        if (sentRejectedInv != null)
+                        {
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(sentRejectedInv.Id, idToken);
+                        }
                     }
                     else
                     {
-                        // Check if this is a received rejected invitation
+                        // This is a received rejected invitation
                         var receivedRejected = await _firestoreService.GetReceivedRejectedInvitationsAsync(userId, idToken);
                         var receivedRejectedInv = receivedRejected.FirstOrDefault(i => i.FromUserId == caregiver.UserId);
                         if (receivedRejectedInv != null)
