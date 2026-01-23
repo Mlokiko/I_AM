@@ -589,155 +589,6 @@ public class FirestoreService : IFirestoreService
 
     #endregion
 
-    #region Question Management Operations
-
-    public async Task<bool> SaveQuestionAsync(string caretakerId, Question question, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
-            {
-                return false;
-            }
-
-            question.Id = string.IsNullOrEmpty(question.Id) ? Guid.NewGuid().ToString() : question.Id;
-            question.CaretakerId = caretakerId;
-            question.UpdatedAt = DateTime.UtcNow;
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[SaveQuestionAsync] Saving question: ID={question.Id}, Text={question.Text}, CaretakerId={caretakerId}");
-
-            var url = BuildFirestoreUrl("questions", question.Id);
-            var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
-
-            return await SendPatchRequestAsync(url, payloadJson, idToken, "question");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error saving question: {ex.Message}\n{ex.StackTrace}");
-            return false;
-        }
-    }
-
-    public async Task<Question?> GetQuestionAsync(string questionId, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(questionId) || string.IsNullOrWhiteSpace(idToken))
-            {
-                return null;
-            }
-
-            var url = BuildFirestoreUrl("questions", questionId);
-            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
-
-            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("fields", out var fields))
-            {
-                return null;
-            }
-
-            return MapToQuestion(jsonDocument.RootElement, fields);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error fetching question: {ex.Message}");
-            return null;
-        }
-    }
-
-    public async Task<List<Question>> GetCaregiverQuestionsAsync(string caretakerId, string idToken)
-    {
-        var questions = new List<Question>();
-
-        try
-        {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
-            {
-                return questions;
-            }
-
-            var url = BuildFirestoreUrl("questions_of_caretakers", caretakerId);
-            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
-
-            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
-            {
-                return questions;
-            }
-
-            foreach (var doc in documents.EnumerateArray())
-            {
-                if (!doc.TryGetProperty("fields", out var fields))
-                    continue;
-
-                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
-
-                if (careTakerId == caretakerId)
-                {
-                    var question = MapToQuestion(doc, fields);
-                    questions.Add(question);
-                }
-            }
-
-            return questions.OrderBy(q => q.Order).ToList();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error fetching questions: {ex.Message}");
-            return questions;
-        }
-    }
-
-    public async Task<bool> UpdateQuestionAsync(string caretakerId, Question question, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(question.Id) || string.IsNullOrWhiteSpace(idToken))
-            {
-                return false;
-            }
-
-            question.CaretakerId = caretakerId;
-            question.UpdatedAt = DateTime.UtcNow;
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[UpdateQuestionAsync] Updating question: ID={question.Id}, Text={question.Text}");
-
-            var url = BuildFirestoreUrl("questions", question.Id);
-            var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
-
-            return await SendPatchRequestAsync(url, payloadJson, idToken, "question");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error updating question: {ex.Message}\n{ex.StackTrace}");
-            return false;
-        }
-    }
-
-    public async Task<bool> DeleteQuestionAsync(string questionId, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(questionId) || string.IsNullOrWhiteSpace(idToken))
-            {
-                return false;
-            }
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[DeleteQuestionAsync] Deleting question: ID={questionId}");
-
-            var url = BuildFirestoreUrl("questions", questionId);
-            return await SendDeleteRequestAsync(url, idToken, "question");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error deleting question: {ex.Message}");
-            return false;
-        }
-    }
-
-    #endregion
-
     #region CareTaker Questions Operations
 
     public async Task<bool> CreateCareTakerQuestionsAsync(string caretakerId, List<Question> questions, string idToken)
@@ -1237,6 +1088,130 @@ public class FirestoreService : IFirestoreService
             OpenAnswer = FirestoreValueExtractor.GetStringValue(fields, "openAnswer"),
             AnsweredAt = FirestoreValueExtractor.GetTimestampValue(fields, "answeredAt")
         };
+    }
+
+    #endregion
+
+    // Nowe metody do zarz¹dzania pytaniami podopiecznych
+
+    #region Caretaker Question Management Operations
+
+    public async Task<bool> SaveQuestionToCaretakerAsync(string caretakerId, Question question, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            // Pobierz istniej¹ce pytania podopiecznego
+            var careTakerQuestions = await GetCareTakerQuestionsAsync(caretakerId, idToken) 
+                ?? new CareTakerQuestions { CaretakerId = caretakerId, Questions = new List<Question>() };
+
+            // Przygotuj nowe pytanie
+            question.Id = string.IsNullOrEmpty(question.Id) ? Guid.NewGuid().ToString() : question.Id;
+            question.CaretakerId = caretakerId;
+            question.UpdatedAt = DateTime.UtcNow;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[SaveQuestionToCaretakerAsync] Saving question: ID={question.Id}, CaretakerId={caretakerId}");
+
+            // Aktualizuj lub dodaj pytanie
+            var existingIndex = careTakerQuestions.Questions.FindIndex(q => q.Id == question.Id);
+            if (existingIndex >= 0)
+            {
+                careTakerQuestions.Questions[existingIndex] = question;
+            }
+            else
+            {
+                careTakerQuestions.Questions.Add(question);
+            }
+
+            careTakerQuestions.UpdatedAt = DateTime.UtcNow;
+
+            // Zapisz ca³¹ kolekcjê pytañ
+            return await UpdateCareTakerQuestionsAsync(caretakerId, careTakerQuestions.Questions, idToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error saving question to caretaker: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateQuestionToCaretakerAsync(string caretakerId, Question question, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(question.Id) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            question.CaretakerId = caretakerId;
+            question.UpdatedAt = DateTime.UtcNow;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[UpdateQuestionToCaretakerAsync] Updating question: ID={question.Id}");
+
+            // Pobierz pytania i zaktualizuj
+            var careTakerQuestions = await GetCareTakerQuestionsAsync(caretakerId, idToken);
+            if (careTakerQuestions == null)
+            {
+                return false;
+            }
+
+            var index = careTakerQuestions.Questions.FindIndex(q => q.Id == question.Id);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            careTakerQuestions.Questions[index] = question;
+            return await UpdateCareTakerQuestionsAsync(caretakerId, careTakerQuestions.Questions, idToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error updating question: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteQuestionFromCaretakerAsync(string caretakerId, string questionId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(questionId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return false;
+            }
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[DeleteQuestionFromCaretakerAsync] Deleting question: ID={questionId}");
+
+            // Pobierz pytania i usuñ
+            var careTakerQuestions = await GetCareTakerQuestionsAsync(caretakerId, idToken);
+            if (careTakerQuestions == null)
+            {
+                return false;
+            }
+
+            var initialCount = careTakerQuestions.Questions.Count;
+            careTakerQuestions.Questions.RemoveAll(q => q.Id == questionId);
+
+            if (careTakerQuestions.Questions.Count == initialCount)
+            {
+                return false; // Pytanie nie znalezione
+            }
+
+            return await UpdateCareTakerQuestionsAsync(caretakerId, careTakerQuestions.Questions, idToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error deleting question: {ex.Message}");
+            return false;
+        }
     }
 
     #endregion

@@ -28,9 +28,9 @@ namespace I_AM
             Routing.RegisterRoute(nameof(CareGiverMainPage), typeof(CareGiverMainPage));
             Routing.RegisterRoute(nameof(CalendarPage), typeof(CalendarPage));
             Routing.RegisterRoute(nameof(DailyActivityPage), typeof(DailyActivityPage));
-            Routing.RegisterRoute(nameof(EditCareTakerQuestionsPage), typeof(EditCareTakerQuestionsPage));
             Routing.RegisterRoute(nameof(SurveyPage), typeof(SurveyPage));
             Routing.RegisterRoute("addoreditquestion", typeof(AddOrEditQuestionPage));
+            Routing.RegisterRoute(nameof(EditCareTakerQuestionsPage), typeof(EditCareTakerQuestionsPage));
 
             _authService = ServiceHelper.GetService<IAuthenticationService>();
             _firestoreService = ServiceHelper.GetService<IFirestoreService>();

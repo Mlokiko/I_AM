@@ -1,6 +1,7 @@
 using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
+using I_AM.Pages.CareGiver;
 using Microsoft.Maui.Controls;
 
 namespace I_AM.Pages.Main;
@@ -92,16 +93,33 @@ public partial class AddOrEditQuestionPage : ContentPage
     {
         try
         {
-            var question = await _firestoreService.GetQuestionAsync(_questionId!, idToken);
-            if (question != null)
+            // Pobierz pytanie z GetCareTakerQuestionsAsync zamiast GetQuestionAsync
+            var careTakerQuestions = await _firestoreService.GetCareTakerQuestionsAsync(_careTakerId, idToken);
+            
+            if (careTakerQuestions?.Questions != null)
             {
-                _viewModel.SetQuestion(question);
-                _careTakerId = question.CaretakerId;
+                var question = careTakerQuestions.Questions.FirstOrDefault(q => q.Id == _questionId);
+                if (question != null)
+                {
+                    _viewModel.SetQuestion(question);
+                }
+                else
+                {
+                    await DisplayAlert("B³¹d", "Nie znaleziono pytania", "OK");
+                }
             }
         }
         catch (Exception ex)
         {
             await DisplayAlert("B³¹d", $"Nie uda³o siê za³adowaæ pytania: {ex.Message}", "OK");
+        }
+    }
+
+    private void OnQuestionTypeChanged(object sender, EventArgs e)
+    {
+        if (sender is Picker picker)
+        {
+            // Binding obs³uguje mapowanie automatycznie
         }
     }
 
@@ -127,6 +145,13 @@ public partial class AddOrEditQuestionPage : ContentPage
                 return;
             }
 
+            // ZMIANA: Walidacja opcji
+            if (!_viewModel.ValidateOptions(out var validationError))
+            {
+                await DisplayAlert("B³¹d walidacji", validationError, "OK");
+                return;
+            }
+
             var authState = await _authStateService.LoadAuthenticationStateAsync();
             if (authState == null || string.IsNullOrEmpty(authState.IdToken))
             {
@@ -135,12 +160,17 @@ public partial class AddOrEditQuestionPage : ContentPage
             }
 
             _viewModel.UpdateOptionsFromUI();
-            _viewModel.Question.Type = _viewModel.SelectedQuestionType;
             _viewModel.Question.UpdatedAt = DateTime.UtcNow;
 
-            // DEBUG LOGS
+            if (_viewModel.Question.Type == "open")
+            {
+                _viewModel.Question.Options = new List<QuestionOption>();
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Type changed to 'open', options cleared");
+            }
+
             System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Question ID: {_viewModel.Question.Id}");
             System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Question Text: {_viewModel.Question.Text}");
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Question Type: {_viewModel.Question.Type}");
             System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] CareTaker ID: {_careTakerId}");
             System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Mode: {_mode}");
             System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Options count: {_viewModel.Question.Options?.Count ?? 0}");
@@ -150,26 +180,26 @@ public partial class AddOrEditQuestionPage : ContentPage
             {
                 _viewModel.Question.CaretakerId = _careTakerId;
                 System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Saving NEW question...");
-                success = await _firestoreService.SaveQuestionAsync(
+                success = await _firestoreService.SaveQuestionToCaretakerAsync(
                     _careTakerId,
                     _viewModel.Question,
                     authState.IdToken);
-                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] SaveQuestionAsync result: {success}");
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] SaveQuestionToCaretakerAsync result: {success}");
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Updating existing question...");
-                success = await _firestoreService.UpdateQuestionAsync(
+                success = await _firestoreService.UpdateQuestionToCaretakerAsync(
                     _careTakerId,
                     _viewModel.Question,
                     authState.IdToken);
-                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] UpdateQuestionAsync result: {success}");
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] UpdateQuestionToCaretakerAsync result: {success}");
             }
 
             if (success)
             {
                 await DisplayAlert("Sukces", "Pytanie zosta³o zapisane", "OK");
-                await Shell.Current.GoToAsync("..");
+                await Shell.Current.GoToAsync($"//CareGiverMainPage/EditCareTakerQuestionsPage");
             }
             else
             {
@@ -185,23 +215,17 @@ public partial class AddOrEditQuestionPage : ContentPage
 
     private async void OnBackClicked(object sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
+        // ZMIANA: Wróæ do EditCareTakerQuestionsPage u¿ywaj¹c pe³nej œcie¿ki
+        await Shell.Current.GoToAsync($"//CareGiverMainPage/EditCareTakerQuestionsPage");
     }
 
     protected override bool OnBackButtonPressed()
     {
         MainThread.BeginInvokeOnMainThread(async () =>
         {
-            await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
+            // ZMIANA: Wróæ do EditCareTakerQuestionsPage u¿ywaj¹c pe³nej œcie¿ki
+            await Shell.Current.GoToAsync($"//CareGiverMainPage/EditCareTakerQuestionsPage");
         });
         return true;
-    }
-
-    private void OnQuestionTypeChanged(object sender, EventArgs e)
-    {
-        if (sender is Picker picker)
-        {
-            _viewModel.SelectedQuestionType = picker.SelectedItem?.ToString() ?? "closed";
-        }
     }
 }

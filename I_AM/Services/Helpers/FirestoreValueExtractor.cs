@@ -237,4 +237,71 @@ public static class FirestoreValueExtractor
     {
         return GetQuestionsArray(fields, key);
     }
+
+    // ========== POINTS CONVERSION METHODS ==========
+
+    /// <summary>
+    /// Validates and converts points from user input to decimal format with comma separator
+    /// Accepts formats: x, x.x, x.xx, x,x, x,xx
+    /// </summary>
+    /// <param name="input">User input string</param>
+    /// <param name="convertedPoints">Converted decimal value</param>
+    /// <param name="displayFormat">Formatted string for display (x,xx)</param>
+    /// <returns>True if valid format, false if contains invalid characters</returns>
+    public static bool TryConvertPoints(string input, out decimal convertedPoints, out string displayFormat)
+    {
+        convertedPoints = 0m;
+        displayFormat = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            convertedPoints = 0m;
+            displayFormat = "0,00";
+            return true;
+        }
+
+        // Usuñ spacje
+        string trimmed = input.Trim();
+
+        // SprawdŸ czy zawiera tylko cyfry, przecinki, kropki i minus
+        if (!System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^-?[\d.,]*$"))
+        {
+            return false; // Zawiera niedozwolone znaki
+        }
+
+        // Zast¹p kropkê przecinkiem dla ujednolicenia
+        string normalized = trimmed.Replace(".", ",");
+
+        // Jeœli zawiera przecinek, sprawdŸ Format
+        if (normalized.Contains(","))
+        {
+            // Obs³uguj przypadki typu "5,5" -> "5,50"
+            if (decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.GetCultureInfo("pl-PL"), out decimal result))
+            {
+                convertedPoints = result;
+                displayFormat = result.ToString("F2", CultureInfo.GetCultureInfo("pl-PL"));
+                return true;
+            }
+        }
+        else
+        {
+            // Brak przecinka - jeœli to sama liczba ca³kowita
+            if (decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal result))
+            {
+                convertedPoints = result;
+                displayFormat = result.ToString("F2", CultureInfo.GetCultureInfo("pl-PL"));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Formats decimal value to string with comma separator (x,xx)
+    /// </summary>
+    public static string FormatPoints(decimal value)
+    {
+        return value.ToString("F2", CultureInfo.GetCultureInfo("pl-PL"));
+    }
 }

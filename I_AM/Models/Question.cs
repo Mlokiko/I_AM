@@ -36,4 +36,7 @@ public class Question
 
     [JsonPropertyName("order")]
     public int Order { get; set; }
+
+    [JsonIgnore]
+    public string TypeDisplay => Type == "open" ? "Otwarte" : "Zamkniête";
 }

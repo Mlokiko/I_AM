@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="I_AM.Pages.Main.EditCareTakerQuestionsPage"
+             x:Class="I_AM.Pages.CareGiver.EditCareTakerQuestionsPage"
              Title="Zarządzaj pytaniami podopiecznego"
              Shell.NavBarIsVisible="False"
              BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}">
@@ -38,7 +38,7 @@
                                LineBreakMode="WordWrap" />
 
                         <!-- Question Type Badge -->
-                        <Label Text="{Binding Type, StringFormat='Typ: {0}'}"
+                        <Label Text="{Binding TypeDisplay, StringFormat='Typ: {0}'}"
                                FontSize="12"
                                TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray400}}" />
 

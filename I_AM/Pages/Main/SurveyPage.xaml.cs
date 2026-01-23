@@ -53,7 +53,8 @@ public partial class SurveyPage : ContentPage
 
             _caregiverId = caregivers.First().UserId;
 
-            _questions = await _firestoreService.GetCaregiverQuestionsAsync(_caretakerId, idToken);
+            var careTakerQuestions = await _firestoreService.GetCareTakerQuestionsAsync(_caretakerId, idToken);
+            _questions = careTakerQuestions?.Questions ?? new List<Question>();
 
             if (_questions.Count == 0)
             {

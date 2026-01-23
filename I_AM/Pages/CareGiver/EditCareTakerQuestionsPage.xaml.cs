@@ -3,7 +3,7 @@ using I_AM.Services;
 using I_AM.Services.Interfaces;
 using I_AM.Pages.CareGiver;
 
-namespace I_AM.Pages.Main;
+namespace I_AM.Pages.CareGiver;
 
 public partial class EditCareTakerQuestionsPage : ContentPage
 {
@@ -66,6 +66,12 @@ public partial class EditCareTakerQuestionsPage : ContentPage
                 // Bind the full profiles to the picker, displaying the name
                 CareTakerPicker.ItemsSource = _careTakerProfiles;
                 CareTakerPicker.ItemDisplayBinding = new Binding("FirstName");
+                
+                // ZMIANA: Jeœli by³ wybrany podopieczny, odœwie¿ jego pytania
+                if (CareTakerPicker.SelectedItem is UserProfile previouslySelected)
+                {
+                    await RefreshSelectedCareTakerQuestionsAsync(authState.IdToken);
+                }
             }
             else
             {
@@ -91,35 +97,55 @@ public partial class EditCareTakerQuestionsPage : ContentPage
                     return;
                 }
 
-                // ===== ZMIENIONE: pobierz z CareTakerQuestions zamiast GetCaregiverQuestionsAsync =====
-                var careTakerQuestions = await _firestoreService.GetCareTakerQuestionsAsync(
-                    selectedCareTaker.Id,
-                    authState.IdToken);
-
-                // Diagnostyka
-                System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] CareTaker ID: {selectedCareTaker.Id}");
-                System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] CareTakerQuestions result: {(careTakerQuestions != null ? "Not null" : "Null")}");
-                if (careTakerQuestions != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] Questions count: {careTakerQuestions.Questions?.Count ?? 0}");
-                }
-
-                if (careTakerQuestions != null && careTakerQuestions.Questions?.Count > 0)
-                {
-                    _questions = careTakerQuestions.Questions;
-                    QuestionsCollectionView.ItemsSource = _questions.Select(q => new QuestionViewModel(q)).ToList();
-                }
-                else
-                {
-                    _questions = new List<Question>();
-                    QuestionsCollectionView.ItemsSource = null;
-                    await DisplayAlert("Informacja", "Ten podopieczny nie ma jeszcze ¿adnych pytañ", "OK");
-                }
+                await LoadQuestionsForCareTakerAsync(selectedCareTaker, authState.IdToken);
             }
             catch (Exception ex)
             {
                 await DisplayAlert("B³¹d", $"Nie uda³o siê za³adowaæ pytañ: {ex.Message}", "OK");
             }
+        }
+    }
+
+    /// <summary>
+    /// ZMIANA: Nowa metoda do za³adowania pytañ dla wybranego podopiecznego
+    /// </summary>
+    private async Task LoadQuestionsForCareTakerAsync(UserProfile selectedCareTaker, string idToken)
+    {
+        var careTakerQuestions = await _firestoreService.GetCareTakerQuestionsAsync(
+            selectedCareTaker.Id,
+            idToken);
+
+        // Diagnostyka
+        System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] CareTaker ID: {selectedCareTaker.Id}");
+        System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] CareTakerQuestions result: {(careTakerQuestions != null ? "Not null" : "Null")}");
+        if (careTakerQuestions != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[EditCareTakerQuestionsPage] Questions count: {careTakerQuestions.Questions?.Count ?? 0}");
+        }
+
+        if (careTakerQuestions != null && careTakerQuestions.Questions?.Count > 0)
+        {
+            _questions = careTakerQuestions.Questions;
+            // ZMIANA: Utwórz now¹ listê, aby wymusiæ odœwie¿enie CollectionView
+            QuestionsCollectionView.ItemsSource = null;
+            QuestionsCollectionView.ItemsSource = _questions;
+        }
+        else
+        {
+            _questions = new List<Question>();
+            QuestionsCollectionView.ItemsSource = null;
+            await DisplayAlert("Informacja", "Ten podopieczny nie ma jeszcze ¿adnych pytañ", "OK");
+        }
+    }
+
+    /// <summary>
+    /// ZMIANA: Nowa metoda do odœwie¿enia pytañ aktualnie wybranego podopiecznego
+    /// </summary>
+    private async Task RefreshSelectedCareTakerQuestionsAsync(string idToken)
+    {
+        if (CareTakerPicker.SelectedItem is UserProfile selectedCareTaker)
+        {
+            await LoadQuestionsForCareTakerAsync(selectedCareTaker, idToken);
         }
     }
 
@@ -159,14 +185,22 @@ public partial class EditCareTakerQuestionsPage : ContentPage
                 return;
             }
 
-            var success = await _firestoreService.DeleteQuestionAsync(
+            if (CareTakerPicker.SelectedItem is not UserProfile selectedCareTaker)
+            {
+                await DisplayAlert("B³¹d", "Brak wybranego podopiecznego", "OK");
+                return;
+            }
+
+            var success = await _firestoreService.DeleteQuestionFromCaretakerAsync(
+                selectedCareTaker.Id,
                 questionId,
                 authState.IdToken);
 
             if (success)
             {
                 await DisplayAlert("Sukces", "Pytanie zosta³o usuniête", "OK");
-                await LoadCareTakersAsync();
+                // ZMIANA: Odœwie¿ pytania zamiast pe³nego prze³adowania
+                await RefreshSelectedCareTakerQuestionsAsync(authState.IdToken);
             }
             else
             {
@@ -181,41 +215,22 @@ public partial class EditCareTakerQuestionsPage : ContentPage
 
     private async void OnEditQuestionClicked(object sender, EventArgs e)
     {
-        if (sender is Button button && button.BindingContext is QuestionViewModel questionVm)
+        if (sender is Button button && button.BindingContext is Question question)
         {
             // Nawiguj do edycji
-            await Shell.Current.GoToAsync($"addoreditquestion?mode=edit&questionId={questionVm.Id}&caretakerId={_careTakerProfiles.FirstOrDefault()?.Id}");
+            await Shell.Current.GoToAsync($"addoreditquestion?mode=edit&questionId={question.Id}&caretakerId={_careTakerProfiles.FirstOrDefault()?.Id}");
         }
     }
 
     private async void OnDeleteQuestionClicked(object sender, EventArgs e)
     {
-        if (sender is Button button && button.BindingContext is QuestionViewModel questionVm)
+        if (sender is Button button && button.BindingContext is Question question)
         {
             var result = await DisplayAlert("Potwierdzenie", "Czy chcesz usun¹æ to pytanie?", "Tak", "Nie");
             if (result)
             {
-                await DeleteQuestionAsync(questionVm.Id);
+                await DeleteQuestionAsync(question.Id);
             }
         }
-    }
-
-    // Helper class for view model binding
-    private class QuestionViewModel
-    {
-        private readonly Question _question;
-
-        public QuestionViewModel(Question question)
-        {
-            _question = question;
-        }
-
-        public string Id => _question.Id;
-        public string Text => _question.Text;
-        public string Description => _question.Description;
-        public string Type => _question.Type;
-        public List<QuestionOption> Options => _question.Options;
-        public bool IsClosedQuestion => _question.Type == "closed";
-        public bool IsOpenQuestion => _question.Type == "open";
     }
 }
