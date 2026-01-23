@@ -53,7 +53,7 @@ public partial class SurveyPage : ContentPage
 
             _caregiverId = caregivers.First().UserId;
 
-            _questions = await _firestoreService.GetCaregiverQuestionsAsync(_caretakerId, _caregiverId, idToken);
+            _questions = await _firestoreService.GetCaregiverQuestionsAsync(_caretakerId, idToken);
 
             if (_questions.Count == 0)
             {
@@ -125,7 +125,6 @@ public partial class SurveyPage : ContentPage
             var session = new TestSession
             {
                 CaretakerId = _caretakerId,
-                CaregiverId = _caregiverId,
                 TotalPoints = totalPoints,
                 MaxPoints = maxPoints,
                 PercentageScore = percentageScore,
@@ -135,10 +134,10 @@ public partial class SurveyPage : ContentPage
 
             foreach (var answer in _answers.Values)
             {
-                await _firestoreService.SaveAnswerAsync(_caretakerId, _caregiverId, answer, idToken);
+                await _firestoreService.SaveAnswerAsync(_caretakerId, answer, idToken);
             }
 
-            await _firestoreService.SaveTestSessionAsync(_caretakerId, _caregiverId, session, idToken);
+            await _firestoreService.SaveTestSessionAsync(_caretakerId, session, idToken);
 
             await DisplayAlert("Sukces", "Twoje odpowiedzi zosta³y zapisane", "OK");
             await Shell.Current.GoToAsync("..");

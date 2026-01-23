@@ -26,7 +26,6 @@ public class SeedQuestionsService
             {
                 Id = Guid.NewGuid().ToString(),
                 CaretakerId = caretakerId,
-                CaregiverId = caregiverId,
                 Text = "Jak siê dzisiaj czujesz?",
                 Description = "Oceñ swoje samopoczucie na dzisiejszy dzieñ",
                 Type = "closed",
@@ -47,7 +46,6 @@ public class SeedQuestionsService
             {
                 Id = Guid.NewGuid().ToString(),
                 CaretakerId = caretakerId,
-                CaregiverId = caregiverId,
                 Text = "Jak spa³eœ/aœ wczoraj?",
                 Description = "Oceñ jakoœæ swojego snu",
                 Type = "closed",
@@ -68,7 +66,6 @@ public class SeedQuestionsService
             {
                 Id = Guid.NewGuid().ToString(),
                 CaretakerId = caretakerId,
-                CaregiverId = caregiverId,
                 Text = "Czy mia³eœ/aœ ból dzisiaj?",
                 Description = "Oceñ poziom bólu, jeœli by³",
                 Type = "closed",
@@ -89,7 +86,6 @@ public class SeedQuestionsService
             {
                 Id = Guid.NewGuid().ToString(),
                 CaretakerId = caretakerId,
-                CaregiverId = caregiverId,
                 Text = "Czy bra³eœ/aœ wszystkie leki na czas?",
                 Description = "Potwierdzenie za¿ycia leków",
                 Type = "closed",
@@ -110,7 +106,6 @@ public class SeedQuestionsService
             {
                 Id = Guid.NewGuid().ToString(),
                 CaretakerId = caretakerId,
-                CaregiverId = caregiverId,
                 Text = "Czy mia³eœ/aœ apetyt dzisiaj?",
                 Description = "Oceñ swój apetyt",
                 Type = "closed",
@@ -131,7 +126,7 @@ public class SeedQuestionsService
     }
 
     /// <summary>
-    /// Initializes default questions for a caretaker if they don't exist
+    /// Initializes default questions for a caretaker
     /// </summary>
     public async Task<bool> InitializeDefaultQuestionsAsync(
         string caretakerId,
@@ -140,53 +135,40 @@ public class SeedQuestionsService
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || 
-                string.IsNullOrWhiteSpace(caregiverId) || 
-                string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
-                System.Diagnostics.Debug.WriteLine("[SeedQuestionsService] Missing parameters");
+                System.Diagnostics.Debug.WriteLine("[SeedQuestionsService] Missing caretakerId or idToken");
                 return false;
             }
 
-            // Check if questions already exist
-            var existingQuestions = await _firestoreService.GetCaregiverQuestionsAsync(
-                caretakerId, 
-                caregiverId, 
-                idToken);
-
-            if (existingQuestions.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[SeedQuestionsService] Questions already exist for caretaker {caretakerId}");
-                return true; // Already initialized
-            }
+            System.Diagnostics.Debug.WriteLine(
+                $"[SeedQuestionsService] Initializing questions for caretaker {caretakerId}");
 
             // Get default questions
             var defaultQuestions = GetDefaultQuestions(caretakerId, caregiverId);
 
-            // Save each question
-            foreach (var question in defaultQuestions)
-            {
-                var saved = await _firestoreService.SaveQuestionAsync(
-                    caretakerId,
-                    caregiverId,
-                    question,
-                    idToken);
-
-                if (!saved)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[SeedQuestionsService] Failed to save question: {question.Text}");
-                    return false;
-                }
-
-                System.Diagnostics.Debug.WriteLine(
-                    $"[SeedQuestionsService] Successfully saved question: {question.Text}");
-            }
-
             System.Diagnostics.Debug.WriteLine(
-                $"[SeedQuestionsService] All default questions saved for caretaker {caretakerId}");
-            return true;
+                $"[SeedQuestionsService] Creating careTaker questions document with {defaultQuestions.Count} default questions");
+
+            // ===== NOWY KOD: Tworzy nowy dokument z pytaniami =====
+            var success = await _firestoreService.CreateCareTakerQuestionsAsync(
+                caretakerId,
+                defaultQuestions,
+                idToken);
+
+            if (success)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SeedQuestionsService] Successfully created careTaker questions document for caretaker {caretakerId}");
+                return true;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SeedQuestionsService] Failed to create careTaker questions document for caretaker {caretakerId}");
+                return false;
+            }
+            // ===== KONIEC NOWEGO KODU =====
         }
         catch (Exception ex)
         {

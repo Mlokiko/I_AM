@@ -11,8 +11,8 @@ public partial class ManageCareTakersPage : ContentPage
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
     public ObservableCollection<CaregiverInfo> CareTakers { get; set; }
-    
-    // Dictionary to track invitation IDs for accepted careTakers
+
+    // Dictionary to track invitation IDs for accepted caretakers
     private Dictionary<string, string> _acceptedCareTakerInvitationIds = new();
 
     public ManageCareTakersPage()
@@ -30,19 +30,15 @@ public partial class ManageCareTakersPage : ContentPage
         await LoadCareTakersAsync();
     }
 
-    private void UpdateButtonVisibility()
+    private void ConfigureButtonVisibility()
     {
-        // This method is called to update button visibility after loading
-        // The visibility will be handled in the LoadCareTakersAsync by using a custom approach
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            // Force refresh the CollectionView to update button visibility
-            if (CareTakersCollectionView != null)
-            {
-                CareTakersCollectionView.ItemsSource = null;
-                CareTakersCollectionView.ItemsSource = CareTakers;
-            }
-        });
+        // Get the CollectionView element
+        var collectionView = CareTakersCollectionView;
+        if (collectionView?.ItemsSource == null)
+            return;
+
+        // We need to update visibility after items are added
+        // Since we can't directly access template controls, we'll handle this in each button's clicked event
     }
 
     private async Task LoadCareTakersAsync()
@@ -54,6 +50,7 @@ public partial class ManageCareTakersPage : ContentPage
             CareTakersLoadingIndicator.IsVisible = true;
             ErrorLabel.IsVisible = false;
             CareTakers.Clear();
+            _acceptedCareTakerInvitationIds.Clear();
 
             var userId = await _authService.GetCurrentUserIdAsync();
             var idToken = await _authService.GetCurrentIdTokenAsync();
@@ -67,68 +64,55 @@ public partial class ManageCareTakersPage : ContentPage
                 return;
             }
 
-            // 1. Get pending invitations received by this caregiver (ToUserId == userId, Status == pending)
+            // 1. Get list of accepted caretakers
+            System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Calling GetCaretakersAsync");
+            var caretakers = await _firestoreService.GetCaretakersAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Retrieved {caretakers.Count} accepted caretakers");
+
+            // 2. Get list of received pending invitations
             System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Calling GetPendingInvitationsAsync");
             var pendingInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
 
             System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Retrieved {pendingInvitations.Count} pending invitations");
 
-            // 2. For accepted and rejected, we need to query all invitations where ToUserId == userId
-            // Since GetAllCaregiverInvitationsAsync filters by fromUserId, we need to get all and filter manually
-            System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Getting all invitations to find accepted/rejected");
-            
-            var allInvitations = new List<CaregiverInvitation>();
-            var url = $"https://firestore.googleapis.com/v1/projects/{FirebaseConfig.ProjectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
-            
-            var httpClient = new System.Net.Http.HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
-            
-            var response = await httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
+            // 3. Get list of received rejected invitations
+            System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Calling GetReceivedRejectedInvitationsAsync");
+            var rejectedInvitations = await _firestoreService.GetReceivedRejectedInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Retrieved {rejectedInvitations.Count} rejected invitations");
+
+            // 4. Get list of sent pending invitations
+            System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Calling GetSentPendingInvitationsAsync");
+            var sentPendingInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Retrieved {sentPendingInvitations.Count} sent pending invitations");
+
+            // 5. Get list of sent rejected invitations
+            System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: Calling GetSentRejectedInvitationsAsync");
+            var sentRejectedInvitations = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
+
+            System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Retrieved {sentRejectedInvitations.Count} sent rejected invitations");
+
+            // 6. Add accepted caretakers
+            foreach (var caretaker in caretakers)
             {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var jsonDocument = System.Text.Json.JsonDocument.Parse(responseBody);
-                var root = jsonDocument.RootElement;
+                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding accepted caretaker {caretaker.FirstName}");
+                CareTakers.Add(caretaker);
                 
-                if (root.TryGetProperty("documents", out var documents))
+                // Get invitation ID for this caretaker (if it exists)
+                var invitationId = await GetInvitationIdForCaretakerAsync(userId, caretaker.UserId, idToken);
+                if (!string.IsNullOrEmpty(invitationId))
                 {
-                    foreach (var doc in documents.EnumerateArray())
-                    {
-                        if (!doc.TryGetProperty("fields", out var fields))
-                            continue;
-                        
-                        var toUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId");
-                        var status = FirestoreValueExtractor.GetStringValue(fields, "status");
-                        
-                        // Only include invitations received by this caregiver
-                        if (toUserId == userId && (status == "accepted" || status == "rejected"))
-                        {
-                            var invitation = new CaregiverInvitation
-                            {
-                                Id = FirestoreValueExtractor.GetDocumentId(doc),
-                                FromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId"),
-                                ToUserId = toUserId,
-                                ToUserEmail = FirestoreValueExtractor.GetStringValue(fields, "toUserEmail"),
-                                FromUserName = FirestoreValueExtractor.GetStringValue(fields, "fromUserName"),
-                                Status = status,
-                                CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
-                                RespondedAt = FirestoreValueExtractor.GetTimestampValueNullable(fields, "respondedAt")
-                            };
-                            allInvitations.Add(invitation);
-                        }
-                    }
+                    _acceptedCareTakerInvitationIds[caretaker.UserId] = invitationId;
+                    System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] Found invitation ID {invitationId} for caretaker {caretaker.UserId}");
                 }
             }
-            
-            var acceptedInvitations = allInvitations.Where(i => i.Status == "accepted").ToList();
-            var rejectedInvitations = allInvitations.Where(i => i.Status == "rejected").ToList();
 
-            System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: {pendingInvitations.Count} pending, {acceptedInvitations.Count} accepted, {rejectedInvitations.Count} rejected");
-
-            // 3. Add pending invitations from careTakers
+            // 7. Add received pending invitations as caretakers with "pending" status
             foreach (var invitation in pendingInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding pending invitation from {invitation.FromUserName}");
+                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received pending invitation from {invitation.FromUserName}");
                 CareTakers.Add(new CaregiverInfo
                 {
                     UserId = invitation.FromUserId,
@@ -136,67 +120,63 @@ public partial class ManageCareTakersPage : ContentPage
                     FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
                     LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "pending",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
-            // 4. Add accepted invitations from careTakers
-            foreach (var invitation in acceptedInvitations)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding accepted invitation from {invitation.FromUserName}");
-                
-                // For accepted invitations, fetch the careTaker's actual profile to get correct email
-                var careTakerProfile = await _firestoreService.GetUserProfileAsync(invitation.FromUserId, idToken);
-                
-                var email = careTakerProfile?.Email ?? invitation.ToUserEmail;
-                var firstName = careTakerProfile?.FirstName ?? (invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName);
-                var lastName = careTakerProfile?.LastName ?? (invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty);
-                
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] Accepted careTaker - UserId: {invitation.FromUserId}, Email: {email}, Name: {firstName} {lastName}");
-                
-                CareTakers.Add(new CaregiverInfo
-                {
-                    UserId = invitation.FromUserId,
-                    Email = email,
-                    FirstName = firstName,
-                    LastName = lastName,
-                    Status = "accepted",
-                    AddedAt = invitation.CreatedAt
-                });
-            }
-
-            // 5. Add rejected invitations from careTakers
+            // 8. Add received rejected invitations as caretakers with "rejected" status
             foreach (var invitation in rejectedInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding rejected invitation from {invitation.FromUserName}");
-                
-                // For rejected invitations, also fetch the careTaker's actual profile
-                var careTakerProfile = await _firestoreService.GetUserProfileAsync(invitation.FromUserId, idToken);
-                
-                var email = careTakerProfile?.Email ?? invitation.ToUserEmail;
-                var firstName = careTakerProfile?.FirstName ?? (invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName);
-                var lastName = careTakerProfile?.LastName ?? (invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty);
-                
+                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received rejected invitation from {invitation.FromUserName}");
                 CareTakers.Add(new CaregiverInfo
                 {
                     UserId = invitation.FromUserId,
-                    Email = email,
-                    FirstName = firstName,
-                    LastName = lastName,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
+                    LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
                     Status = "rejected",
-                    AddedAt = invitation.CreatedAt
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = false
                 });
             }
 
+            // 9. Add sent pending invitations as caretakers with "pending" status
+            foreach (var invitation in sentPendingInvitations)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
+                CareTakers.Add(new CaregiverInfo
+                {
+                    UserId = invitation.ToUserId,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
+                    LastName = string.Empty,
+                    Status = "pending",
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
+                });
+            }
+
+            // 10. Add sent rejected invitations as caretakers with "rejected" status
+            foreach (var invitation in sentRejectedInvitations)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent rejected invitation to {invitation.ToUserEmail}");
+                CareTakers.Add(new CaregiverInfo
+                {
+                    UserId = invitation.ToUserId,
+                    Email = invitation.ToUserEmail,
+                    FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
+                    LastName = string.Empty,
+                    Status = "rejected",
+                    AddedAt = invitation.CreatedAt,
+                    IsSentByMe = true
+                });
+            }
+
+            NoCareTakersLabel.IsVisible = CareTakers.Count == 0;
             if (CareTakers.Count == 0)
-            {
                 System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: No careTakers found");
-                NoCareTakersLabel.IsVisible = true;
-            }
-            else
-            {
-                NoCareTakersLabel.IsVisible = false;
-            }
+            
             System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: SUCCESS");
         }
         catch (Exception ex)
@@ -324,18 +304,18 @@ public partial class ManageCareTakersPage : ContentPage
         var careTaker = button.BindingContext as CaregiverInfo;
         if (careTaker == null) return;
         
-        // Only allow accepting pending invitations
-        if (careTaker.Status != "pending")
+        // Only allow accepting received pending invitations (IsSentByMe = false, Status = "pending")
+        if (careTaker.IsSentByMe || careTaker.Status != "pending")
         {
-            await DisplayAlert("Informacja", "Mo¿na tylko zaakceptowaæ oczekuj¹ce zaproszenia", "OK");
+            await DisplayAlert("Information", "You can only accept received pending invitations", "OK");
             return;
         }
 
         var result = await DisplayAlert(
-            "Potwierdzenie",
-            $"Czy chcesz zaakceptowaæ {careTaker.FirstName} {careTaker.LastName} jako podopiecznego?",
-            "Tak",
-            "Nie"
+            "Confirmation",
+            $"Do you want to accept {careTaker.FirstName} {careTaker.LastName} as a caretaker?",
+            "Yes",
+            "No"
         );
 
         if (!result) return;
@@ -351,66 +331,61 @@ public partial class ManageCareTakersPage : ContentPage
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
             {
-                await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ danych u¿ytkownika", "OK");
+                await DisplayAlert("Error", "Unable to load user data", "OK");
                 return;
             }
 
-            // Find the invitation ID for this careTaker
             var pendingInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
             var invitation = pendingInvitations.FirstOrDefault(i => i.FromUserId == careTaker.UserId);
 
             if (invitation == null)
             {
-                await DisplayAlert("B³¹d", "Nie mo¿na znaleŸæ zaproszenia dla tego podopiecznego", "OK");
+                await DisplayAlert("Error", "Cannot find invitation for this caretaker", "OK");
                 return;
             }
 
-            // Accept the invitation
-            var success = await _firestoreService.AcceptCaregiverInvitationAsync(
-                userId, 
-                invitation.Id, 
-                careTaker.UserId, 
-                idToken);
+            var success = await _firestoreService.AcceptCaregiverInvitationAsync(userId, invitation.Id, careTaker.UserId, idToken);
 
             if (success)
             {
-                // ===== NOWE: Inicjalizuj pytania =====
-                var seedService = ServiceHelper.GetService<SeedQuestionsService>();
-                var questionsInitialized = await seedService.InitializeDefaultQuestionsAsync(
-                    careTaker.UserId,  // caretakerId
-                    userId,            // caregiverId
-                    idToken);
+                // ===== WYKOMENTOWANE: Inicjalizuj pytania =====
+                //var seedService = ServiceHelper.GetService<SeedQuestionsService>();
+                //var questionsInitialized = await seedService.InitializeDefaultQuestionsAsync(
+                //    careTaker.UserId,  // caretakerId
+                //    userId,            // caregiverId
+                //    idToken);
 
-                if (questionsInitialized)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        "[ManageCareTakersPage] Default questions initialized successfully");
-                    await DisplayAlert(
-                        "Sukces", 
-                        $"Zaproszenie zaakceptowane od {careTaker.FirstName}\n\n Pytania zosta³y przygotowane",
-                        "OK");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        "[ManageCareTakersPage] Failed to initialize questions");
-                    await DisplayAlert(
-                        "Uwaga", 
-                        $"Zaproszenie zaakceptowane, ale pytania nie mog³y byæ przygotowane",
-                        "OK");
-                }
-                // ===== KONIEC NOWEGO KODU =====
+                //if (questionsInitialized)
+                //{
+                //    System.Diagnostics.Debug.WriteLine(
+                //        "[ManageCareTakersPage] Default questions initialized successfully");
+                //    await DisplayAlert(
+                //        "Sukces", 
+                //        $"Zaproszenie zaakceptowane od {careTaker.FirstName}\n\n Pytania zosta³y przygotowane",
+                //        "OK");
+                //}
+                //else
+                //{
+                //    System.Diagnostics.Debug.WriteLine(
+                //        "[ManageCareTakersPage] Failed to initialize questions");
+                //    await DisplayAlert(
+                //        "Uwaga", 
+                //        $"Zaproszenie zaakceptowane, ale pytania nie mog³y byæ przygotowane",
+                //        "OK");
+                //}
+                // ===== KONIEC WYKOMENTOWANEGO KODU =====
 
+                await DisplayAlert("Sukces", $"Zaproszenie zaakceptowane od {careTaker.FirstName}", "OK");
                 await LoadCareTakersAsync();
             }
             else
             {
-                await DisplayAlert("B³¹d", "Nie uda³o siê zaakceptowaæ zaproszenia", "OK");
+                await DisplayAlert("Error", "Failed to accept invitation", "OK");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
         finally
         {
@@ -427,18 +402,18 @@ public partial class ManageCareTakersPage : ContentPage
         var careTaker = button.BindingContext as CaregiverInfo;
         if (careTaker == null) return;
         
-        // Only allow rejecting pending invitations
-        if (careTaker.Status != "pending")
+        // Only allow rejecting received pending invitations (IsSentByMe = false, Status = "pending")
+        if (careTaker.IsSentByMe || careTaker.Status != "pending")
         {
-            await DisplayAlert("Informacja", "Mo¿na tylko odrzuciæ oczekuj¹ce zaproszenia", "OK");
+            await DisplayAlert("Information", "You can only reject received pending invitations", "OK");
             return;
         }
 
         var result = await DisplayAlert(
-            "Potwierdzenie",
-            $"Czy chcesz odrzuciæ zaproszenie od {careTaker.FirstName} {careTaker.LastName}?",
-            "Tak",
-            "Nie"
+            "Confirmation",
+            $"Do you want to reject invitation from {careTaker.FirstName} {careTaker.LastName}?",
+            "Yes",
+            "No"
         );
 
         if (!result) return;
@@ -454,43 +429,34 @@ public partial class ManageCareTakersPage : ContentPage
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
             {
-                await DisplayAlert("B³¹d", "Nie mo¿na za³adowaæ danych u¿ytkownika", "OK");
+                await DisplayAlert("Error", "Unable to load user data", "OK");
                 return;
             }
 
-            // Find the invitation ID for this careTaker
             var pendingInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
             var invitation = pendingInvitations.FirstOrDefault(i => i.FromUserId == careTaker.UserId);
 
             if (invitation == null)
             {
-                await DisplayAlert("B³¹d", "Nie mo¿na znaleŸæ zaproszenia dla tego podopiecznego", "OK");
+                await DisplayAlert("Error", "Cannot find invitation for this caretaker", "OK");
                 return;
             }
 
-            // Reject the invitation
             var success = await _firestoreService.RejectCaregiverInvitationAsync(userId, invitation.Id, idToken);
 
             if (success)
             {
-                CareTakers.Remove(careTaker);
-                
-                if (CareTakers.Count == 0)
-                {
-                    NoCareTakersLabel.IsVisible = true;
-                }
-
-                await DisplayAlert("Sukces", "Zaproszenie odrzucone", "OK");
+                await DisplayAlert("Success", "Invitation rejected", "OK");
                 await LoadCareTakersAsync();
             }
             else
             {
-                await DisplayAlert("B³¹d", "Nie uda³o siê odrzuciæ zaproszenia", "OK");
+                await DisplayAlert("Error", "Failed to reject invitation", "OK");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
         finally
         {
@@ -507,18 +473,11 @@ public partial class ManageCareTakersPage : ContentPage
         var careTaker = button.BindingContext as CaregiverInfo;
         if (careTaker == null) return;
 
-        // Don't allow removing pending careTakers
-        if (careTaker.Status == "pending")
-        {
-            await DisplayAlert("Informacja", "Nie mozna usunac oczekujacego zaproszenia. Prosze najpierw przyj ac lub odrzucic.", "OK");
-            return;
-        }
-
         var result = await DisplayAlert(
-            "Potwierdzenie",
-            $"Czy na pewno chcesz usunac {careTaker.FirstName} {careTaker.LastName}?",
-            "Tak",
-            "Nie"
+            "Confirmation",
+            $"Do you want to remove {careTaker.FirstName} {careTaker.LastName}?",
+            "Yes",
+            "No"
         );
 
         if (!result) return;
@@ -534,83 +493,74 @@ public partial class ManageCareTakersPage : ContentPage
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(idToken))
             {
-                await DisplayAlert("Blad", "Nie mozna zaladowac danych uzytkownika", "OK");
+                await DisplayAlert("Error", "Unable to load user data", "OK");
                 return;
             }
 
             bool success = false;
 
-            // For rejected status, find and delete rejected invitation
-            if (careTaker.Status == "rejected")
+            // If status is "pending" or "rejected", delete the invitation
+            if (careTaker.Status == "pending" || careTaker.Status == "rejected")
             {
-                System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Deleting {careTaker.Status} invitation for {careTaker.Email}");
-                // Need to query all invitations to find the rejected one with ToUserId == userId
-                var httpClient = new System.Net.Http.HttpClient();
-                var url = $"https://firestore.googleapis.com/v1/projects/{FirebaseConfig.ProjectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+                System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Deleting {careTaker.Status} invitation for {careTaker.UserId}");
                 
-                var response = await httpClient.GetAsync(url);
-                if (response.IsSuccessStatusCode)
+                // Check if this is a received invitation
+                if (careTaker.Status == "pending")
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    var jsonDocument = System.Text.Json.JsonDocument.Parse(responseBody);
-                    var root = jsonDocument.RootElement;
+                    var pendingInvitations = await _firestoreService.GetPendingInvitationsAsync(userId, idToken);
+                    var receivedInvitation = pendingInvitations.FirstOrDefault(i => i.FromUserId == careTaker.UserId);
                     
-                    if (root.TryGetProperty("documents", out var documents))
+                    if (receivedInvitation != null)
                     {
-                        foreach (var doc in documents.EnumerateArray())
+                        success = await _firestoreService.DeleteCaregiverInvitationAsync(receivedInvitation.Id, idToken);
+                    }
+                    else
+                    {
+                        // Check if this is a sent invitation
+                        var sentInvitations = await _firestoreService.GetSentPendingInvitationsAsync(userId, idToken);
+                        var sentInvitation = sentInvitations.FirstOrDefault(i => i.ToUserId == careTaker.UserId);
+                        if (sentInvitation != null)
                         {
-                            if (!doc.TryGetProperty("fields", out var fields))
-                                continue;
-                            
-                            var toUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId");
-                            var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
-                            var status = FirestoreValueExtractor.GetStringValue(fields, "status");
-                            var invitationId = FirestoreValueExtractor.GetDocumentId(doc);
-                            
-                            if (toUserId == userId && fromUserId == careTaker.UserId && status == "rejected")
-                            {
-                                success = await _firestoreService.DeleteCaregiverInvitationAsync(invitationId, idToken);
-                                break;
-                            }
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(sentInvitation.Id, idToken);
+                        }
+                    }
+                }
+                else if (careTaker.Status == "rejected")
+                {
+                    var rejectedInvitations = await _firestoreService.GetReceivedRejectedInvitationsAsync(userId, idToken);
+                    var receivedRejected = rejectedInvitations.FirstOrDefault(i => i.FromUserId == careTaker.UserId);
+                    
+                    if (receivedRejected != null)
+                    {
+                        success = await _firestoreService.DeleteCaregiverInvitationAsync(receivedRejected.Id, idToken);
+                    }
+                    else
+                    {
+                        // Check if this is a sent rejected invitation
+                        var sentRejected = await _firestoreService.GetSentRejectedInvitationsAsync(userId, idToken);
+                        var sentRejectedInv = sentRejected.FirstOrDefault(i => i.ToUserId == careTaker.UserId);
+                        if (sentRejectedInv != null)
+                        {
+                            success = await _firestoreService.DeleteCaregiverInvitationAsync(sentRejectedInv.Id, idToken);
                         }
                     }
                 }
             }
-            else if (careTaker.Status == "accepted")
+            else
             {
-                // For accepted careTakers, remove from the relationship
-                System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Removing accepted careTaker {careTaker.Email}");
-                var httpClient = new System.Net.Http.HttpClient();
-                var url = $"https://firestore.googleapis.com/v1/projects/{FirebaseConfig.ProjectId}/databases/(default)/documents/caregiver_invitations?key={FirebaseConfig.WebApiKey}";
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", idToken);
+                // Otherwise (accepted), remove from caretakers list
+                System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Removing accepted caretaker {careTaker.UserId}");
+                success = await _firestoreService.RemoveCaretakerAsync(userId, careTaker.UserId, idToken);
                 
-                var response = await httpClient.GetAsync(url);
-                if (response.IsSuccessStatusCode)
+                // If caretaker was successfully removed, also delete the invitation from database
+                if (success && _acceptedCareTakerInvitationIds.TryGetValue(careTaker.UserId, out var invitationId))
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    var jsonDocument = System.Text.Json.JsonDocument.Parse(responseBody);
-                    var root = jsonDocument.RootElement;
+                    System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Deleting invitation {invitationId} for removed caretaker");
+                    var deleteSuccess = await _firestoreService.DeleteCaregiverInvitationAsync(invitationId, idToken);
+                    System.Diagnostics.Debug.WriteLine($"[OnRemoveCareTakerClicked] Invitation deletion result: {deleteSuccess}");
                     
-                    if (root.TryGetProperty("documents", out var documents))
-                    {
-                        foreach (var doc in documents.EnumerateArray())
-                        {
-                            if (!doc.TryGetProperty("fields", out var fields))
-                                continue;
-                            
-                            var toUserId = FirestoreValueExtractor.GetStringValue(fields, "toUserId");
-                            var fromUserId = FirestoreValueExtractor.GetStringValue(fields, "fromUserId");
-                            var status = FirestoreValueExtractor.GetStringValue(fields, "status");
-                            var invitationId = FirestoreValueExtractor.GetDocumentId(doc);
-                            
-                            if (toUserId == userId && fromUserId == careTaker.UserId && status == "accepted")
-                            {
-                                success = await _firestoreService.DeleteCaregiverInvitationAsync(invitationId, idToken);
-                                break;
-                            }
-                        }
-                    }
+                    // Remove from dictionary
+                    _acceptedCareTakerInvitationIds.Remove(careTaker.UserId);
                 }
             }
 
@@ -623,17 +573,17 @@ public partial class ManageCareTakersPage : ContentPage
                     NoCareTakersLabel.IsVisible = true;
                 }
 
-                await DisplayAlert("Sukces", "Podopieczny zostal usuniety", "OK");
+                await DisplayAlert("Success", "Caretaker has been removed", "OK");
                 await LoadCareTakersAsync();
             }
             else
             {
-                await DisplayAlert("Blad", "Nie udalo sie usunac podopiecznego", "OK");
+                await DisplayAlert("Error", "Failed to remove caretaker", "OK");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Blad", $"Blad: {ex.Message}", "OK");
+            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
         finally
         {
@@ -652,5 +602,26 @@ public partial class ManageCareTakersPage : ContentPage
     {
         ErrorLabel.Text = message;
         ErrorLabel.IsVisible = true;
+    }
+
+    private async Task<string?> GetInvitationIdForCaretakerAsync(string caregiverId, string caretakerId, string idToken)
+    {
+        try
+        {
+            // Get all accepted invitations received by caregiver from this caretaker
+            var acceptedInvitations = await _firestoreService.GetAllReceivedInvitationsAsync(caregiverId, idToken);
+            
+            var invitation = acceptedInvitations.FirstOrDefault(i => 
+                i.FromUserId == caretakerId && 
+                i.ToUserId == caregiverId && 
+                i.Status == "accepted");
+            
+            return invitation?.Id;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[GetInvitationIdForCaretakerAsync] Error: {ex.Message}");
+            return null;
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using I_AM.Models;
 
@@ -36,16 +37,40 @@ public static class FirestoreValueExtractor
     }
 
     /// <summary>
-    /// Extracts a decimal value from Firestore fields
+    /// Extracts a decimal value from Firestore fields (handles both string and numeric JSON types)
     /// </summary>
     public static decimal GetDecimalValue(JsonElement fields, string key)
     {
-        if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("doubleValue", out var value))
+        try
         {
-            if (decimal.TryParse(value.GetString(), out var result))
+            if (fields.TryGetProperty(key, out var prop))
             {
-                return result;
+                if (prop.TryGetProperty("doubleValue", out var value))
+                {
+                    // Firestore REST API zwraca doubleValue jako string, ale mog¹ byæ ró¿ne formaty
+                    var stringValue = value.GetString();
+                    if (!string.IsNullOrEmpty(stringValue) && decimal.TryParse(stringValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
+                    {
+                        return result;
+                    }
+                }
             }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Jeœli GetString() nie zadzia³a, spróbuj GetDouble()
+            try
+            {
+                if (fields.TryGetProperty(key, out var prop2) && prop2.TryGetProperty("doubleValue", out var value2))
+                {
+                    if (value2.TryGetDouble(out var doubleValue))
+                    {
+                        return (decimal)doubleValue;
+                    }
+                }
+            }
+            catch { }
+            System.Diagnostics.Debug.WriteLine($"[GetDecimalValue] Error parsing decimal for key '{key}': {ex.Message}");
         }
         return 0m;
     }
@@ -154,5 +179,62 @@ public static class FirestoreValueExtractor
             return parts.Length > 0 ? parts[^1] : string.Empty;
         }
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Extracts array of questions from Firestore fields with error handling
+    /// </summary>
+    public static List<Question> GetQuestionsArray(JsonElement fields, string key)
+    {
+        var result = new List<Question>();
+        try
+        {
+            if (fields.TryGetProperty(key, out var prop) && prop.TryGetProperty("arrayValue", out var arrayValue))
+            {
+                if (arrayValue.TryGetProperty("values", out var values))
+                {
+                    foreach (var item in values.EnumerateArray())
+                    {
+                        try
+                        {
+                            if (item.TryGetProperty("mapValue", out var mapValue) && mapValue.TryGetProperty("fields", out var questionFields))
+                            {
+                                var question = new Question
+                                {
+                                    Id = GetStringValue(questionFields, "id"),
+                                    CaretakerId = GetStringValue(questionFields, "caretakerId"),
+                                    Text = GetStringValue(questionFields, "text"),
+                                    Description = GetStringValue(questionFields, "description"),
+                                    Type = GetStringValue(questionFields, "type"),
+                                    Options = GetQuestionOptions(questionFields, "options"),
+                                    IsActive = GetBoolValue(questionFields, "isActive"),
+                                    CreatedAt = GetTimestampValue(questionFields, "createdAt"),
+                                    UpdatedAt = GetTimestampValue(questionFields, "updatedAt"),
+                                    Order = GetIntValue(questionFields, "order")
+                                };
+                                result.Add(question);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[GetQuestionsArray] Error parsing individual question: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[GetQuestionsArray] Error parsing questions array: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Extracts array of questions from Firestore fields (alias for GetQuestionsArray)
+    /// </summary>
+    public static List<Question> GetQuestionsList(JsonElement fields, string key)
+    {
+        return GetQuestionsArray(fields, key);
     }
 }

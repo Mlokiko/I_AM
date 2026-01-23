@@ -13,9 +13,6 @@ public class TestSession
     [JsonPropertyName("caretakerId")]
     public string CaretakerId { get; set; } = string.Empty;
 
-    [JsonPropertyName("caregiverId")]
-    public string CaregiverId { get; set; } = string.Empty;
-
     [JsonPropertyName("totalPoints")]
     public decimal TotalPoints { get; set; }
 

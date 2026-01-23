@@ -123,15 +123,45 @@ public partial class RegisterPage : ContentPage
 
             if (saveSuccess && publicSaveSuccess)
             {
-                await DisplayAlert("Sukces", "Rejestracja powiod³a siê! Twój profil zosta³ zapisany.", "OK");
-                // Navigate to appropriate page based on auth state
+                // Jeœli u¿ytkownik wybra³ rolê podopiecznego, inicjalizuj pytania
+                if (!isCaregiver)
+                {
+                    System.Diagnostics.Debug.WriteLine("[RegisterPage] Initializing default questions for new caretaker");
+                    
+                    var seedService = ServiceHelper.GetService<SeedQuestionsService>();
+                    var questionsInitialized = await seedService.InitializeDefaultQuestionsAsync(
+                        result.UserId!,     // caretakerId
+                        string.Empty,       // caregiverId (brak jeszcze opiekuna)
+                        result.IdToken!);
+
+                    if (questionsInitialized)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            "[RegisterPage] Default questions initialized successfully");
+                        await DisplayAlert("Sukces", 
+                            "Rejestracja powiod³a siê! Twój profil zosta³ zapisany.\nPytania zosta³y przygotowane.", 
+                            "OK");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            "[RegisterPage] Failed to initialize questions");
+                        await DisplayAlert("Ostrze¿enie", 
+                            "Rejestracja powiod³a siê, ale pytania nie mog³y byæ przygotowane. Spróbuj póŸniej.", 
+                            "OK");
+                    }
+                }
+                else
+                {
+                    await DisplayAlert("Sukces", "Rejestracja powiod³a siê! Twój profil zosta³ zapisany.", "OK");
+                }
+
                 if (Application.Current?.MainPage is AppShell appShell)
                 {
                     await appShell.NavigateToAppropriatePageAsync();
                 }
                 else
                 {
-                    // Fallback: use relative route
                     await Shell.Current.GoToAsync(nameof(LoginPage));
                 }
             }

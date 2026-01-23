@@ -63,12 +63,12 @@
                                        TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
                                        Text="{Binding Text}" />
 
-                                <!-- Option Points -->
+                                <!-- Option Points - zwykły binding -->
                                 <Entry Placeholder="Punkty"
                                        PlaceholderColor="{AppThemeBinding Light={StaticResource Gray400}, Dark={StaticResource Gray600}}"
                                        TextColor="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}"
                                        Keyboard="Numeric"
-                                       Text="{Binding Points}" />
+                                       Text="{Binding Points, StringFormat='{0:F2}', Mode=TwoWay}" />
 
                                 <!-- Delete Button -->
                                 <Button Text="Usun opcje"
@@ -92,7 +92,7 @@
                         Clicked="OnSaveClicked"
                         Style="{StaticResource PrimaryButtonStyle}" />
                 <Button Text="Anuluj"
-                        Clicked="OnCancelClicked"
+                        Clicked="OnBackClicked"
                         Style="{StaticResource SecondaryButtonStyle}" />
             </VerticalStackLayout>
         </VerticalStackLayout>

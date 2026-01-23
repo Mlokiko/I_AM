@@ -7,6 +7,9 @@ namespace I_AM.Models;
 /// </summary>
 public class UserProfile
 {
+    [JsonIgnore]
+    public string Id { get; set; } = string.Empty;
+
     [JsonPropertyName("firstName")]
     public string FirstName { get; set; } = string.Empty;
 

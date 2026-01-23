@@ -133,30 +133,37 @@ public static class FirestorePayloadBuilder
     /// </summary>
     public static string BuildQuestionPayload(Question question)
     {
-        using (var stream = new MemoryStream())
-        using (var writer = new Utf8JsonWriter(stream))
+        try
         {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
+            using (var stream = new MemoryStream())
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                writer.WriteStartObject();
 
-            WriteStringField(writer, "id", question.Id);
-            WriteStringField(writer, "caretakerId", question.CaretakerId);
-            WriteStringField(writer, "caregiverId", question.CaregiverId);
-            WriteStringField(writer, "text", question.Text);
-            WriteStringField(writer, "description", question.Description);
-            WriteStringField(writer, "type", question.Type);
-            WriteQuestionOptionsField(writer, "options", question.Options);
-            WriteBoolField(writer, "isActive", question.IsActive);
-            WriteTimestampField(writer, "createdAt", question.CreatedAt);
-            WriteTimestampField(writer, "updatedAt", question.UpdatedAt);
-            WriteIntField(writer, "order", question.Order);
+                WriteStringField(writer, "id", question.Id);
+                WriteStringField(writer, "caretakerId", question.CaretakerId);
+                WriteStringField(writer, "text", question.Text);
+                WriteStringField(writer, "description", question.Description);
+                WriteStringField(writer, "type", question.Type);
+                WriteQuestionOptionsField(writer, "options", question.Options);
+                WriteBoolField(writer, "isActive", question.IsActive);
+                WriteTimestampField(writer, "createdAt", question.CreatedAt);
+                WriteTimestampField(writer, "updatedAt", question.UpdatedAt);
+                WriteIntField(writer, "order", question.Order);
 
-            writer.WriteEndObject();
-            writer.WriteEndObject();
+                writer.WriteEndObject();
+                writer.WriteEndObject();
 
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                writer.Flush();
+                return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[BuildQuestionPayload] Error: {ex.Message}\n{ex.StackTrace}");
+            throw;
         }
     }
 
@@ -175,7 +182,6 @@ public static class FirestorePayloadBuilder
             WriteStringField(writer, "id", answer.Id);
             WriteStringField(writer, "questionId", answer.QuestionId);
             WriteStringField(writer, "caretakerId", answer.CaretakerId);
-            WriteStringField(writer, "caregiverId", answer.CaregiverId);
             WriteStringField(writer, "selectedOption", answer.SelectedOption);
             WriteDecimalField(writer, "selectedOptionPoints", answer.SelectedOptionPoints);
             WriteStringField(writer, "openAnswer", answer.OpenAnswer);
@@ -203,11 +209,35 @@ public static class FirestorePayloadBuilder
 
             WriteStringField(writer, "id", session.Id);
             WriteStringField(writer, "caretakerId", session.CaretakerId);
-            WriteStringField(writer, "caregiverId", session.CaregiverId);
             WriteDecimalField(writer, "totalPoints", session.TotalPoints);
             WriteDecimalField(writer, "maxPoints", session.MaxPoints);
             WriteDecimalField(writer, "percentageScore", session.PercentageScore);
             WriteTimestampField(writer, "completedAt", session.CompletedAt);
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.Flush();
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
+    }
+
+    /// <summary>
+    /// Builds a JSON payload for careTaker questions in Firestore format
+    /// </summary>
+    public static string BuildCareTakerQuestionsPayload(CareTakerQuestions careTakerQuestions)
+    {
+        using (var stream = new MemoryStream())
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("fields");
+            writer.WriteStartObject();
+
+            WriteStringField(writer, "caretakerId", careTakerQuestions.CaretakerId);
+            WriteQuestionsArrayField(writer, "questions", careTakerQuestions.Questions);
+            WriteTimestampField(writer, "createdAt", careTakerQuestions.CreatedAt);
+            WriteTimestampField(writer, "updatedAt", careTakerQuestions.UpdatedAt);
 
             writer.WriteEndObject();
             writer.WriteEndObject();
@@ -223,7 +253,7 @@ public static class FirestorePayloadBuilder
     {
         writer.WritePropertyName(fieldName);
         writer.WriteStartObject();
-        writer.WriteString("stringValue", value);
+        writer.WriteString("stringValue", value ?? string.Empty);
         writer.WriteEndObject();
     }
 
@@ -258,14 +288,14 @@ public static class FirestorePayloadBuilder
         writer.WritePropertyName("arrayValue");
         writer.WriteStartObject();
 
-        if (values.Count > 0)
+        if (values?.Count > 0)
         {
             writer.WritePropertyName("values");
             writer.WriteStartArray();
             foreach (var value in values)
             {
                 writer.WriteStartObject();
-                writer.WriteString("stringValue", value);
+                writer.WriteString("stringValue", value ?? string.Empty);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -279,7 +309,8 @@ public static class FirestorePayloadBuilder
     {
         writer.WritePropertyName(fieldName);
         writer.WriteStartObject();
-        writer.WriteString("doubleValue", value.ToString());
+
+        writer.WriteNumber("doubleValue", (double)value);
         writer.WriteEndObject();
     }
 
@@ -290,7 +321,7 @@ public static class FirestorePayloadBuilder
         writer.WritePropertyName("arrayValue");
         writer.WriteStartObject();
 
-        if (options.Count > 0)
+        if (options?.Count > 0)
         {
             writer.WritePropertyName("values");
             writer.WriteStartArray();
@@ -305,6 +336,47 @@ public static class FirestorePayloadBuilder
                 WriteStringField(writer, "text", option.Text);
                 WriteDecimalField(writer, "points", option.Points);
                 WriteIntField(writer, "order", option.Order);
+
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteQuestionsArrayField(Utf8JsonWriter writer, string fieldName, List<Question> questions)
+    {
+        writer.WritePropertyName(fieldName);
+        writer.WriteStartObject();
+        writer.WritePropertyName("arrayValue");
+        writer.WriteStartObject();
+
+        if (questions?.Count > 0)
+        {
+            writer.WritePropertyName("values");
+            writer.WriteStartArray();
+            foreach (var question in questions)
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("mapValue");
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                writer.WriteStartObject();
+
+                WriteStringField(writer, "id", question.Id);
+                WriteStringField(writer, "caretakerId", question.CaretakerId);
+                WriteStringField(writer, "text", question.Text);
+                WriteStringField(writer, "description", question.Description);
+                WriteStringField(writer, "type", question.Type);
+                WriteQuestionOptionsField(writer, "options", question.Options);
+                WriteBoolField(writer, "isActive", question.IsActive);
+                WriteTimestampField(writer, "createdAt", question.CreatedAt);
+                WriteTimestampField(writer, "updatedAt", question.UpdatedAt);
+                WriteIntField(writer, "order", question.Order);
 
                 writer.WriteEndObject();
                 writer.WriteEndObject();

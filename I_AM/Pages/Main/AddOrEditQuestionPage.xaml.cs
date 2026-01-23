@@ -5,6 +5,9 @@ using Microsoft.Maui.Controls;
 
 namespace I_AM.Pages.Main;
 
+[QueryProperty(nameof(Mode), "mode")]
+[QueryProperty(nameof(CareTakerId), "caretakerId")]
+[QueryProperty(nameof(QuestionId), "questionId")]
 public partial class AddOrEditQuestionPage : ContentPage
 {
     private readonly IFirestoreService _firestoreService;
@@ -14,6 +17,37 @@ public partial class AddOrEditQuestionPage : ContentPage
     private string _mode = "add";
     private string? _questionId;
     private AddOrEditQuestionViewModel _viewModel = new();
+
+    // Query Properties
+    public string Mode
+    {
+        get => _mode;
+        set 
+        {
+            _mode = value ?? "add";
+            System.Diagnostics.Debug.WriteLine($"[QueryProperty] Mode set to: {_mode}");
+        }
+    }
+
+    public string CareTakerId
+    {
+        get => _careTakerId;
+        set 
+        {
+            _careTakerId = value ?? string.Empty;
+            System.Diagnostics.Debug.WriteLine($"[QueryProperty] CareTakerId set to: {_careTakerId}");
+        }
+    }
+
+    public string QuestionId
+    {
+        get => _questionId ?? string.Empty;
+        set 
+        {
+            _questionId = value ?? null;
+            System.Diagnostics.Debug.WriteLine($"[QueryProperty] QuestionId set to: {_questionId}");
+        }
+    }
 
     public AddOrEditQuestionPage()
     {
@@ -40,18 +74,8 @@ public partial class AddOrEditQuestionPage : ContentPage
                 return;
             }
 
-            _caregiverId = authState.UserId;
-
-            // Get query parameters
-            var queryDict = this.GetNavigationParameters();
-            if (queryDict.ContainsKey("mode"))
-                _mode = queryDict["mode"].ToString() ?? "add";
-
-            if (queryDict.ContainsKey("caretakerId"))
-                _careTakerId = queryDict["caretakerId"].ToString() ?? string.Empty;
-
-            if (queryDict.ContainsKey("questionId"))
-                _questionId = queryDict["questionId"].ToString();
+            System.Diagnostics.Debug.WriteLine($"[InitializeAsync] CareTaker ID: {_careTakerId}");
+            System.Diagnostics.Debug.WriteLine($"[InitializeAsync] Mode: {_mode}");
 
             if (_mode == "edit" && !string.IsNullOrEmpty(_questionId))
             {
@@ -72,6 +96,7 @@ public partial class AddOrEditQuestionPage : ContentPage
             if (question != null)
             {
                 _viewModel.SetQuestion(question);
+                _careTakerId = question.CaretakerId;
             }
         }
         catch (Exception ex)
@@ -96,6 +121,12 @@ public partial class AddOrEditQuestionPage : ContentPage
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(_careTakerId))
+            {
+                await DisplayAlert("B³¹d", "Brak ID podopiecznego", "OK");
+                return;
+            }
+
             var authState = await _authStateService.LoadAuthenticationStateAsync();
             if (authState == null || string.IsNullOrEmpty(authState.IdToken))
             {
@@ -107,16 +138,32 @@ public partial class AddOrEditQuestionPage : ContentPage
             _viewModel.Question.Type = _viewModel.SelectedQuestionType;
             _viewModel.Question.UpdatedAt = DateTime.UtcNow;
 
+            // DEBUG LOGS
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Question ID: {_viewModel.Question.Id}");
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Question Text: {_viewModel.Question.Text}");
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] CareTaker ID: {_careTakerId}");
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Mode: {_mode}");
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Options count: {_viewModel.Question.Options?.Count ?? 0}");
+
             bool success;
             if (_mode == "add")
             {
                 _viewModel.Question.CaretakerId = _careTakerId;
-                _viewModel.Question.CaregiverId = _caregiverId;
-                success = await _firestoreService.SaveQuestionAsync(_careTakerId, _caregiverId, _viewModel.Question, authState.IdToken);
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Saving NEW question...");
+                success = await _firestoreService.SaveQuestionAsync(
+                    _careTakerId,
+                    _viewModel.Question,
+                    authState.IdToken);
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] SaveQuestionAsync result: {success}");
             }
             else
             {
-                success = await _firestoreService.UpdateQuestionAsync(_careTakerId, _caregiverId, _viewModel.Question, authState.IdToken);
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Updating existing question...");
+                success = await _firestoreService.UpdateQuestionAsync(
+                    _careTakerId,
+                    _viewModel.Question,
+                    authState.IdToken);
+                System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] UpdateQuestionAsync result: {success}");
             }
 
             if (success)
@@ -131,28 +178,30 @@ public partial class AddOrEditQuestionPage : ContentPage
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[OnSaveClicked] Exception: {ex.Message}\n{ex.StackTrace}");
             await DisplayAlert("B³¹d", $"B³¹d: {ex.Message}", "OK");
         }
     }
 
-    private async void OnCancelClicked(object sender, EventArgs e)
+    private async void OnBackClicked(object sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync("..");
+        await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
     }
 
-    private IDictionary<string, object> GetNavigationParameters()
+    protected override bool OnBackButtonPressed()
     {
-        if (Shell.Current?.CurrentItem?.CurrentItem is ShellSection section &&
-            section.CurrentItem is ShellContent content &&
-            content.BindingContext is IDictionary<string, object> parameters)
+        MainThread.BeginInvokeOnMainThread(async () =>
         {
-            return parameters;
-        }
-        return new Dictionary<string, object>();
+            await Shell.Current.GoToAsync(nameof(EditCareTakerQuestionsPage));
+        });
+        return true;
     }
 
     private void OnQuestionTypeChanged(object sender, EventArgs e)
     {
-        // Tutaj mo¿na dodaæ logikê obs³ugi zmiany typu pytania
+        if (sender is Picker picker)
+        {
+            _viewModel.SelectedQuestionType = picker.SelectedItem?.ToString() ?? "closed";
+        }
     }
 }

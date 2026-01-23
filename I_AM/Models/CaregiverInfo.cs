@@ -24,4 +24,11 @@ public class CaregiverInfo
 
     [JsonPropertyName("addedAt")]
     public DateTime AddedAt { get; set; }
+
+    /// <summary>
+    /// Indicates if this invitation was sent by the current user (true) or received by them (false).
+    /// Only relevant when Status is "pending" or "rejected".
+    /// </summary>
+    [JsonIgnore]
+    public bool IsSentByMe { get; set; } = false;
 }

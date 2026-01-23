@@ -13,9 +13,6 @@ public class Question
     [JsonPropertyName("caretakerId")]
     public string CaretakerId { get; set; } = string.Empty;
 
-    [JsonPropertyName("caregiverId")]
-    public string CaregiverId { get; set; } = string.Empty;
-
     [JsonPropertyName("text")]
     public string Text { get; set; } = string.Empty;
 

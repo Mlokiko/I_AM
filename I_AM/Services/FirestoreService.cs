@@ -79,7 +79,9 @@ public class FirestoreService : IFirestoreService
                 return null;
             }
 
-            return MapToUserProfile(fields);
+            var profile = MapToUserProfile(fields);
+            profile.Id = userId;  // Ustaw ID bezpoœrednio
+            return profile;
         }
         catch (Exception ex)
         {
@@ -104,66 +106,6 @@ public class FirestoreService : IFirestoreService
         {
             System.Diagnostics.Debug.WriteLine($"Error deleting profile: {ex.Message}\n{ex.StackTrace}");
             return false;
-        }
-    }
-
-    public async Task<(UserProfile? profile, string? userId)> GetUserProfileByEmailAsync(string email, string idToken)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(idToken))
-            {
-                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: email lub idToken s¹ puste");
-                return (null, null);
-            }
-
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Szukam u¿ytkownika z emailem: {email}");
-
-            var url = BuildFirestoreUrl(COLLECTION_USERS);
-            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
-            
-            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
-            {
-                System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Brak 'documents' w odpowiedzi");
-                return (null, null);
-            }
-
-            var docsCount = 0;
-            try { docsCount = documents.GetArrayLength(); } catch { }
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Liczba dokumentów: {docsCount}");
-
-            foreach (var doc in documents.EnumerateArray())
-            {
-                if (!doc.TryGetProperty("fields", out var fields))
-                {
-                    continue;
-                }
-
-                var docEmail = FirestoreValueExtractor.GetStringValue(fields, FIELD_EMAIL);
-                
-                if (!string.IsNullOrEmpty(docEmail))
-                {
-                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Sprawdzam email: {docEmail} vs {email}");
-                }
-
-                if (docEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
-                {
-                    var userId = FirestoreValueExtractor.GetDocumentId(doc);
-                    System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Znaleziono u¿ytkownika! ID: {userId}, Email: {docEmail}");
-
-                    var profile = MapToUserProfile(fields);
-                    profile.Email = docEmail;
-                    return (profile, userId);
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync: Nie znaleziono u¿ytkownika z emailem: {email}");
-            return (null, null);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"GetUserProfileByEmailAsync - B³¹d: {ex.Message}\n{ex.StackTrace}");
-            return (null, null);
         }
     }
 
@@ -289,12 +231,28 @@ public class FirestoreService : IFirestoreService
             (inv, uid) => inv.FromUserId == uid && inv.Status == STATUS_REJECTED);
     }
 
+    public async Task<List<CaregiverInvitation>> GetReceivedRejectedInvitationsAsync(string userId, string idToken)
+    {
+        return await GetInvitationsAsync(
+            userId, 
+            idToken, 
+            (inv, uid) => inv.ToUserId == uid && inv.Status == STATUS_REJECTED);
+    }
+
     public async Task<List<CaregiverInvitation>> GetAllCaregiverInvitationsAsync(string userId, string idToken)
     {
         return await GetInvitationsAsync(
             userId, 
             idToken, 
             (inv, uid) => inv.FromUserId == uid);
+    }
+
+    public async Task<List<CaregiverInvitation>> GetAllReceivedInvitationsAsync(string userId, string idToken)
+    {
+        return await GetInvitationsAsync(
+            userId, 
+            idToken, 
+            (inv, uid) => inv.ToUserId == uid);
     }
 
     /// <summary>
@@ -415,7 +373,7 @@ public class FirestoreService : IFirestoreService
             }
 
             var caretakerUrl = BuildFirestoreUrl(COLLECTION_USERS, caretakerId, $"updateMask.fieldPaths={FIELD_CAREGIVERS_ID}");
-            var caretakerPayload = BuildArrayFieldPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
+            var caretakerPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
             
             return await SendPatchRequestAsync(caretakerUrl, caretakerPayload, idToken, "caretaker profile");
         }
@@ -490,13 +448,53 @@ public class FirestoreService : IFirestoreService
 
             // Update caregiver profile using targeted update
             var caregiverUrl = BuildFirestoreUrl(COLLECTION_USERS, caregiverId, $"updateMask.fieldPaths={FIELD_CARETAKERS_ID}");
-            var caregiverPayload = BuildArrayFieldPayload(FIELD_CARETAKERS_ID, caregiverProfile.CaretakersID);
+            var caregiverPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CARETAKERS_ID, caregiverProfile.CaretakersID);
             
             return await SendPatchRequestAsync(caregiverUrl, caregiverPayload, idToken, "caregiver profile");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error removing caregiver: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<bool> RemoveCaretakerAsync(string userId, string caretakerId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(caretakerId))
+            {
+                return false;
+            }
+
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            if (userProfile == null)
+                return false;
+
+            userProfile.CaretakersID.Remove(caretakerId);
+
+            var caretakerProfile = await GetUserProfileAsync(caretakerId, idToken);
+            if (caretakerProfile == null)
+                return false;
+
+            caretakerProfile.CaregiversID.Remove(userId);
+
+            // Update user profile (normal update)
+            if (!await SaveUserProfileAsync(userId, userProfile, idToken))
+            {
+                return false;
+            }
+
+            // Update caretaker profile using targeted update
+            var caretakerUrl = BuildFirestoreUrl(COLLECTION_USERS, caretakerId, $"updateMask.fieldPaths={FIELD_CAREGIVERS_ID}");
+            var caretakerPayload = FirestorePayloadBuilder.BuildStringArrayPayload(FIELD_CAREGIVERS_ID, caretakerProfile.CaregiversID);
+            
+            return await SendPatchRequestAsync(caretakerUrl, caretakerPayload, idToken, "caretaker profile");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error removing caretaker: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
     }
@@ -545,23 +543,69 @@ public class FirestoreService : IFirestoreService
         }
     }
 
+    public async Task<List<CaregiverInfo>> GetCaretakersAsync(string userId, string idToken)
+    {
+        var caretakers = new List<CaregiverInfo>();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return caretakers;
+            }
+
+            var userProfile = await GetUserProfileAsync(userId, idToken);
+            
+            if (userProfile?.CaretakersID.Count == 0)
+            {
+                return caretakers;
+            }
+
+            foreach (var caretakerId in userProfile!.CaretakersID)
+            {
+                var profile = await GetUserProfileAsync(caretakerId, idToken);
+                if (profile != null)
+                {
+                    caretakers.Add(new CaregiverInfo
+                    {
+                        UserId = caretakerId,
+                        Email = profile.Email,
+                        FirstName = profile.FirstName,
+                        LastName = profile.LastName,
+                        Status = STATUS_ACCEPTED,
+                        AddedAt = profile.CreatedAt
+                    });
+                }
+            }
+
+            return caretakers;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching caretakers: {ex.Message}\n{ex.StackTrace}");
+            return caretakers;
+        }
+    }
+
     #endregion
 
     #region Question Management Operations
 
-    public async Task<bool> SaveQuestionAsync(string caretakerId, string caregiverId, Question question, string idToken)
+    public async Task<bool> SaveQuestionAsync(string caretakerId, Question question, string idToken)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return false;
             }
 
             question.Id = string.IsNullOrEmpty(question.Id) ? Guid.NewGuid().ToString() : question.Id;
             question.CaretakerId = caretakerId;
-            question.CaregiverId = caregiverId;
             question.UpdatedAt = DateTime.UtcNow;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[SaveQuestionAsync] Saving question: ID={question.Id}, Text={question.Text}, CaretakerId={caretakerId}");
 
             var url = BuildFirestoreUrl("questions", question.Id);
             var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
@@ -601,18 +645,18 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<List<Question>> GetCaregiverQuestionsAsync(string caretakerId, string caregiverId, string idToken)
+    public async Task<List<Question>> GetCaregiverQuestionsAsync(string caretakerId, string idToken)
     {
         var questions = new List<Question>();
 
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return questions;
             }
 
-            var url = BuildFirestoreUrl("questions");
+            var url = BuildFirestoreUrl("questions_of_caretakers", caretakerId);
             var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
 
             if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
@@ -626,9 +670,8 @@ public class FirestoreService : IFirestoreService
                     continue;
 
                 var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
-                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
 
-                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                if (careTakerId == caretakerId)
                 {
                     var question = MapToQuestion(doc, fields);
                     questions.Add(question);
@@ -644,7 +687,7 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<bool> UpdateQuestionAsync(string caretakerId, string caregiverId, Question question, string idToken)
+    public async Task<bool> UpdateQuestionAsync(string caretakerId, Question question, string idToken)
     {
         try
         {
@@ -653,7 +696,12 @@ public class FirestoreService : IFirestoreService
                 return false;
             }
 
+            question.CaretakerId = caretakerId;
             question.UpdatedAt = DateTime.UtcNow;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[UpdateQuestionAsync] Updating question: ID={question.Id}, Text={question.Text}");
+
             var url = BuildFirestoreUrl("questions", question.Id);
             var payloadJson = FirestorePayloadBuilder.BuildQuestionPayload(question);
 
@@ -675,6 +723,9 @@ public class FirestoreService : IFirestoreService
                 return false;
             }
 
+            System.Diagnostics.Debug.WriteLine(
+                $"[DeleteQuestionAsync] Deleting question: ID={questionId}");
+
             var url = BuildFirestoreUrl("questions", questionId);
             return await SendDeleteRequestAsync(url, idToken, "question");
         }
@@ -687,20 +738,109 @@ public class FirestoreService : IFirestoreService
 
     #endregion
 
-    #region Answer Operations
+    #region CareTaker Questions Operations
 
-    public async Task<bool> SaveAnswerAsync(string caretakerId, string caregiverId, QuestionAnswer answer, string idToken)
+    public async Task<bool> CreateCareTakerQuestionsAsync(string caretakerId, List<Question> questions, string idToken)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken) || questions == null)
+            {
+                return false;
+            }
+
+            var careTakerQuestions = new CareTakerQuestions
+            {
+                CaretakerId = caretakerId,
+                Questions = questions,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var url = BuildFirestoreUrl("questions_of_caretakers", caretakerId);
+            var payloadJson = FirestorePayloadBuilder.BuildCareTakerQuestionsPayload(careTakerQuestions);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "careTaker questions");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error creating careTaker questions: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public async Task<CareTakerQuestions?> GetCareTakerQuestionsAsync(string caretakerId, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
+            {
+                return null;
+            }
+
+            var url = BuildFirestoreUrl("questions_of_caretakers", caretakerId);
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("fields", out var fields))
+            {
+                return null;
+            }
+
+            return MapToCareTakerQuestions(jsonDocument.RootElement, fields);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error fetching careTaker questions: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateCareTakerQuestionsAsync(string caretakerId, List<Question> questions, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken) || questions == null)
+            {
+                return false;
+            }
+
+            var careTakerQuestions = new CareTakerQuestions
+            {
+                CaretakerId = caretakerId,
+                Questions = questions,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var url = BuildFirestoreUrl("questions_of_caretakers", caretakerId);
+            var payloadJson = FirestorePayloadBuilder.BuildCareTakerQuestionsPayload(careTakerQuestions);
+
+            return await SendPatchRequestAsync(url, payloadJson, idToken, "careTaker questions");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error updating careTaker questions: {ex.Message}\n{ex.StackTrace}");
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region Answer Operations
+
+    public async Task<bool> SaveAnswerAsync(string caretakerId, QuestionAnswer answer, string idToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return false;
             }
 
             answer.Id = string.IsNullOrEmpty(answer.Id) ? Guid.NewGuid().ToString() : answer.Id;
             answer.CaretakerId = caretakerId;
-            answer.CaregiverId = caregiverId;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[SaveAnswerAsync] Saving answer: ID={answer.Id}, QuestionId={answer.QuestionId}, CaretakerId={caretakerId}");
 
             var url = BuildFirestoreUrl("answers", answer.Id);
             var payloadJson = FirestorePayloadBuilder.BuildAnswerPayload(answer);
@@ -714,13 +854,13 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<List<QuestionAnswer>> GetCaretakerAnswersAsync(string caretakerId, string caregiverId, string idToken)
+    public async Task<List<QuestionAnswer>> GetCaretakerAnswersAsync(string caretakerId, string idToken)
     {
         var answers = new List<QuestionAnswer>();
 
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return answers;
             }
@@ -738,17 +878,16 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
-                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
+                var answersCaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
 
-                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                if (answersCaretakerId == caretakerId)
                 {
                     var answer = MapToQuestionAnswer(doc, fields);
                     answers.Add(answer);
                 }
             }
 
-            return answers.OrderByDescending(a => a.AnsweredAt).ToList();
+            return answers;
         }
         catch (Exception ex)
         {
@@ -761,20 +900,22 @@ public class FirestoreService : IFirestoreService
 
     #region Test Session Operations
 
-    public async Task<bool> SaveTestSessionAsync(string caretakerId, string caregiverId, TestSession session, string idToken)
+    public async Task<bool> SaveTestSessionAsync(string caretakerId, TestSession session, string idToken)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return false;
             }
 
             session.Id = string.IsNullOrEmpty(session.Id) ? Guid.NewGuid().ToString() : session.Id;
             session.CaretakerId = caretakerId;
-            session.CaregiverId = caregiverId;
 
-            var url = BuildFirestoreUrl("test_sessions", session.Id);
+            System.Diagnostics.Debug.WriteLine(
+                $"[SaveTestSessionAsync] Saving test session: ID={session.Id}, CaretakerId={caretakerId}");
+
+            var url = BuildFirestoreUrl("testSessions", session.Id);
             var payloadJson = FirestorePayloadBuilder.BuildTestSessionPayload(session);
 
             return await SendPatchRequestAsync(url, payloadJson, idToken, "test session");
@@ -786,17 +927,43 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<TestSession?> GetLatestTestSessionAsync(string caretakerId, string caregiverId, string idToken)
+    public async Task<TestSession?> GetLatestTestSessionAsync(string caretakerId, string idToken)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return null;
             }
 
-            var sessions = await GetTestSessionsAsync(caretakerId, caregiverId, idToken);
-            return sessions.OrderByDescending(s => s.CompletedAt).FirstOrDefault();
+            var url = BuildFirestoreUrl("testSessions");
+            var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
+
+            if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
+            {
+                return null;
+            }
+
+            TestSession? latestSession = null;
+
+            foreach (var doc in documents.EnumerateArray())
+            {
+                if (!doc.TryGetProperty("fields", out var fields))
+                    continue;
+
+                var sessionCaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
+
+                if (sessionCaretakerId == caretakerId)
+                {
+                    var session = MapToTestSession(doc, fields);
+                    if (latestSession == null || session.CompletedAt > latestSession.CompletedAt)
+                    {
+                        latestSession = session;
+                    }
+                }
+            }
+
+            return latestSession;
         }
         catch (Exception ex)
         {
@@ -805,18 +972,18 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<List<TestSession>> GetTestSessionsAsync(string caretakerId, string caregiverId, string idToken)
+    public async Task<List<TestSession>> GetTestSessionsAsync(string caretakerId, string idToken)
     {
         var sessions = new List<TestSession>();
 
         try
         {
-            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(caregiverId) || string.IsNullOrWhiteSpace(idToken))
+            if (string.IsNullOrWhiteSpace(caretakerId) || string.IsNullOrWhiteSpace(idToken))
             {
                 return sessions;
             }
 
-            var url = BuildFirestoreUrl("test_sessions");
+            var url = BuildFirestoreUrl("testSessions");
             var jsonDocument = await FetchFirestoreDocumentAsync(url, idToken);
 
             if (jsonDocument == null || !jsonDocument.RootElement.TryGetProperty("documents", out var documents))
@@ -829,10 +996,9 @@ public class FirestoreService : IFirestoreService
                 if (!doc.TryGetProperty("fields", out var fields))
                     continue;
 
-                var careTakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
-                var careGiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId");
+                var sessionCaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId");
 
-                if (careTakerId == caretakerId && careGiverId == caregiverId)
+                if (sessionCaretakerId == caretakerId)
                 {
                     var session = MapToTestSession(doc, fields);
                     sessions.Add(session);
@@ -848,50 +1014,15 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    #endregion
-
-    #region Mapping Methods
-
-    private static Question MapToQuestion(JsonElement doc, JsonElement fields)
-    {
-        return new Question
-        {
-            Id = FirestoreValueExtractor.GetDocumentId(doc),
-            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
-            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
-            Text = FirestoreValueExtractor.GetStringValue(fields, "text"),
-            Description = FirestoreValueExtractor.GetStringValue(fields, "description"),
-            Type = FirestoreValueExtractor.GetStringValue(fields, "type"),
-            Options = FirestoreValueExtractor.GetQuestionOptions(fields, "options"),
-            IsActive = FirestoreValueExtractor.GetBoolValue(fields, "isActive"),
-            CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
-            UpdatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "updatedAt"),
-            Order = FirestoreValueExtractor.GetIntValue(fields, "order")
-        };
-    }
-
-    private static QuestionAnswer MapToQuestionAnswer(JsonElement doc, JsonElement fields)
-    {
-        return new QuestionAnswer
-        {
-            Id = FirestoreValueExtractor.GetDocumentId(doc),
-            QuestionId = FirestoreValueExtractor.GetStringValue(fields, "questionId"),
-            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
-            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
-            SelectedOption = FirestoreValueExtractor.GetStringValue(fields, "selectedOption"),
-            SelectedOptionPoints = FirestoreValueExtractor.GetDecimalValue(fields, "selectedOptionPoints"),
-            OpenAnswer = FirestoreValueExtractor.GetStringValue(fields, "openAnswer"),
-            AnsweredAt = FirestoreValueExtractor.GetTimestampValue(fields, "answeredAt")
-        };
-    }
-
+    /// <summary>
+    /// Maps Firestore document and fields to a TestSession object
+    /// </summary>
     private static TestSession MapToTestSession(JsonElement doc, JsonElement fields)
     {
         return new TestSession
         {
             Id = FirestoreValueExtractor.GetDocumentId(doc),
             CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
-            CaregiverId = FirestoreValueExtractor.GetStringValue(fields, "caregiverId"),
             TotalPoints = FirestoreValueExtractor.GetDecimalValue(fields, "totalPoints"),
             MaxPoints = FirestoreValueExtractor.GetDecimalValue(fields, "maxPoints"),
             PercentageScore = FirestoreValueExtractor.GetDecimalValue(fields, "percentageScore"),
@@ -1017,6 +1148,7 @@ public class FirestoreService : IFirestoreService
     {
         return new UserProfile
         {
+            Id = FirestoreValueExtractor.GetDocumentId(fields),
             FirstName = FirestoreValueExtractor.GetStringValue(fields, "firstName"),
             LastName = FirestoreValueExtractor.GetStringValue(fields, "lastName"),
             Age = FirestoreValueExtractor.GetIntValue(fields, "age"),
@@ -1049,43 +1181,62 @@ public class FirestoreService : IFirestoreService
     }
 
     /// <summary>
-    /// Builds a JSON payload for updating a string array field
+    /// Maps Firestore document and fields to a Question object
     /// </summary>
-    private static string BuildArrayFieldPayload(string fieldName, List<string> values)
+    private static Question MapToQuestion(JsonElement doc, JsonElement fields)
     {
-        using (var stream = new MemoryStream())
-        using (var writer = new System.Text.Json.Utf8JsonWriter(stream))
+        return new Question
         {
-            writer.WriteStartObject();
-            writer.WritePropertyName("fields");
-            writer.WriteStartObject();
+            Id = FirestoreValueExtractor.GetDocumentId(doc),
+            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+            Text = FirestoreValueExtractor.GetStringValue(fields, "text"),
+            Description = FirestoreValueExtractor.GetStringValue(fields, "description"),
+            Type = FirestoreValueExtractor.GetStringValue(fields, "type"),
+            Options = FirestoreValueExtractor.GetQuestionOptions(fields, "options"),
+            IsActive = FirestoreValueExtractor.GetBoolValue(fields, "isActive"),
+            CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+            UpdatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "updatedAt"),
+            Order = FirestoreValueExtractor.GetIntValue(fields, "order")
+        };
+    }
 
-            writer.WritePropertyName(fieldName);
-            writer.WriteStartObject();
-            writer.WritePropertyName("arrayValue");
-            writer.WriteStartObject();
-
-            if (values.Count > 0)
+    /// <summary>
+    /// Maps Firestore document and fields to a CareTakerQuestions object
+    /// </summary>
+    private static CareTakerQuestions MapToCareTakerQuestions(JsonElement doc, JsonElement fields)
+    {
+        try
+        {
+            return new CareTakerQuestions
             {
-                writer.WritePropertyName("values");
-                writer.WriteStartArray();
-                foreach (var value in values)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("stringValue", value);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.Flush();
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+                CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+                Questions = FirestoreValueExtractor.GetQuestionsList(fields, "questions") ?? new List<Question>(),
+                CreatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "createdAt"),
+                UpdatedAt = FirestoreValueExtractor.GetTimestampValue(fields, "updatedAt")
+            };
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MapToCareTakerQuestions] Error mapping careTaker questions: {ex.Message}\n{ex.StackTrace}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Maps Firestore document and fields to a QuestionAnswer object
+    /// </summary>
+    private static QuestionAnswer MapToQuestionAnswer(JsonElement doc, JsonElement fields)
+    {
+        return new QuestionAnswer
+        {
+            Id = FirestoreValueExtractor.GetDocumentId(doc),
+            QuestionId = FirestoreValueExtractor.GetStringValue(fields, "questionId"),
+            CaretakerId = FirestoreValueExtractor.GetStringValue(fields, "caretakerId"),
+            SelectedOption = FirestoreValueExtractor.GetStringValue(fields, "selectedOption"),
+            SelectedOptionPoints = FirestoreValueExtractor.GetDecimalValue(fields, "selectedOptionPoints"),
+            OpenAnswer = FirestoreValueExtractor.GetStringValue(fields, "openAnswer"),
+            AnsweredAt = FirestoreValueExtractor.GetTimestampValue(fields, "answeredAt")
+        };
     }
 
     #endregion

@@ -48,7 +48,7 @@ public partial class SurveyResultsPage : ContentPage
 
             _caregiverId = caregivers.First().UserId;
 
-            _testSessions = await _firestoreService.GetTestSessionsAsync(_caretakerId, _caregiverId, authState.IdToken);
+            _testSessions = await _firestoreService.GetTestSessionsAsync(_caretakerId, authState.IdToken);
 
             if (_testSessions.Count == 0)
             {

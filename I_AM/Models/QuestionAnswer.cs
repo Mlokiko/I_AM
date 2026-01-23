@@ -16,9 +16,6 @@ public class QuestionAnswer
     [JsonPropertyName("caretakerId")]
     public string CaretakerId { get; set; } = string.Empty;
 
-    [JsonPropertyName("caregiverId")]
-    public string CaregiverId { get; set; } = string.Empty;
-
     [JsonPropertyName("selectedOption")]
     public string SelectedOption { get; set; } = string.Empty; // Text of selected option
 

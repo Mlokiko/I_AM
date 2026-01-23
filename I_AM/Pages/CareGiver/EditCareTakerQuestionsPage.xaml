@@ -67,13 +67,11 @@
                         <!-- Action Buttons -->
                         <HorizontalStackLayout Spacing="8">
                             <Button Text="Edytuj"
-                                    Command="{Binding BindingContext.EditQuestionCommand, Source={x:Reference Name=QuestionsCollectionView}}"
-                                    CommandParameter="{Binding .}"
+                                    Clicked="OnEditQuestionClicked"
                                     HorizontalOptions="FillAndExpand"
                                     BackgroundColor="#2196F3" />
                             <Button Text="Usuń"
-                                    Command="{Binding BindingContext.DeleteQuestionCommand, Source={x:Reference Name=QuestionsCollectionView}}"
-                                    CommandParameter="{Binding .}"
+                                    Clicked="OnDeleteQuestionClicked"
                                     HorizontalOptions="FillAndExpand"
                                     BackgroundColor="#f44336" />
                         </HorizontalStackLayout>
