@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
@@ -11,14 +12,32 @@ public partial class ManageCareTakersPage : ContentPage
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
     public ObservableCollection<CaregiverInfo> CareTakers { get; set; }
+    
+    private bool _isRefreshing;
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        set
+        {
+            if (_isRefreshing != value)
+            {
+                _isRefreshing = value;
+                OnPropertyChanged(nameof(IsRefreshing));
+            }
+        }
+    }
+
+    public ICommand RefreshCommand { get; }
 
     // Dictionary to track invitation IDs for accepted caretakers
     private Dictionary<string, string> _acceptedCareTakerInvitationIds = new();
+    private bool _isLoadingData = false;
 
     public ManageCareTakersPage()
     {
         InitializeComponent();
         CareTakers = new ObservableCollection<CaregiverInfo>();
+        RefreshCommand = new Command(async () => await LoadCareTakersAsync());
         BindingContext = this;
         _authService = ServiceHelper.GetService<IAuthenticationService>();
         _firestoreService = ServiceHelper.GetService<IFirestoreService>();
@@ -27,7 +46,10 @@ public partial class ManageCareTakersPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadCareTakersAsync();
+        if (!_isLoadingData)
+        {
+            await LoadCareTakersAsync();
+        }
     }
 
     private void ConfigureButtonVisibility()
@@ -43,11 +65,17 @@ public partial class ManageCareTakersPage : ContentPage
 
     private async Task LoadCareTakersAsync()
     {
+        // Prevent concurrent loads
+        if (_isLoadingData)
+        {
+            return;
+        }
+
+        _isLoadingData = true;
         try
         {
             System.Diagnostics.Debug.WriteLine("[ManageCareTakersPage] LoadCareTakersAsync: START");
-            CareTakersLoadingIndicator.IsRunning = true;
-            CareTakersLoadingIndicator.IsVisible = true;
+            IsRefreshing = true;
             ErrorLabel.IsVisible = false;
             CareTakers.Clear();
             _acceptedCareTakerInvitationIds.Clear();
@@ -112,65 +140,77 @@ public partial class ManageCareTakersPage : ContentPage
             // 7. Add received pending invitations as caretakers with "pending" status
             foreach (var invitation in pendingInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received pending invitation from {invitation.FromUserName}");
-                CareTakers.Add(new CaregiverInfo
+                if (!CareTakers.Any(c => c.UserId == invitation.FromUserId && c.Status == "pending" && !c.IsSentByMe))
                 {
-                    UserId = invitation.FromUserId,
-                    Email = invitation.ToUserEmail,
-                    FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
-                    LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
-                    Status = "pending",
-                    AddedAt = invitation.CreatedAt,
-                    IsSentByMe = false
-                });
+                    System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received pending invitation from {invitation.FromUserName}");
+                    CareTakers.Add(new CaregiverInfo
+                    {
+                        UserId = invitation.FromUserId,
+                        Email = invitation.ToUserEmail,
+                        FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
+                        LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
+                        Status = "pending",
+                        AddedAt = invitation.CreatedAt,
+                        IsSentByMe = false
+                    });
+                }
             }
 
             // 8. Add received rejected invitations as caretakers with "rejected" status
             foreach (var invitation in rejectedInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received rejected invitation from {invitation.FromUserName}");
-                CareTakers.Add(new CaregiverInfo
+                if (!CareTakers.Any(c => c.UserId == invitation.FromUserId && c.Status == "rejected" && !c.IsSentByMe))
                 {
-                    UserId = invitation.FromUserId,
-                    Email = invitation.ToUserEmail,
-                    FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
-                    LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
-                    Status = "rejected",
-                    AddedAt = invitation.CreatedAt,
-                    IsSentByMe = false
-                });
+                    System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received rejected invitation from {invitation.FromUserName}");
+                    CareTakers.Add(new CaregiverInfo
+                    {
+                        UserId = invitation.FromUserId,
+                        Email = invitation.ToUserEmail,
+                        FirstName = invitation.FromUserName.Split(' ').FirstOrDefault() ?? invitation.FromUserName,
+                        LastName = invitation.FromUserName.Split(' ').Length > 1 ? invitation.FromUserName.Split(' ').Last() : string.Empty,
+                        Status = "rejected",
+                        AddedAt = invitation.CreatedAt,
+                        IsSentByMe = false
+                    });
+                }
             }
 
             // 9. Add sent pending invitations as caretakers with "pending" status
             foreach (var invitation in sentPendingInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
-                CareTakers.Add(new CaregiverInfo
+                if (!CareTakers.Any(c => c.UserId == invitation.ToUserId && c.Status == "pending" && c.IsSentByMe))
                 {
-                    UserId = invitation.ToUserId,
-                    Email = invitation.ToUserEmail,
-                    FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
-                    LastName = string.Empty,
-                    Status = "pending",
-                    AddedAt = invitation.CreatedAt,
-                    IsSentByMe = true
-                });
+                    System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
+                    CareTakers.Add(new CaregiverInfo
+                    {
+                        UserId = invitation.ToUserId,
+                        Email = invitation.ToUserEmail,
+                        FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
+                        LastName = string.Empty,
+                        Status = "pending",
+                        AddedAt = invitation.CreatedAt,
+                        IsSentByMe = true
+                    });
+                }
             }
 
             // 10. Add sent rejected invitations as caretakers with "rejected" status
             foreach (var invitation in sentRejectedInvitations)
             {
-                System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent rejected invitation to {invitation.ToUserEmail}");
-                CareTakers.Add(new CaregiverInfo
+                if (!CareTakers.Any(c => c.UserId == invitation.ToUserId && c.Status == "rejected" && c.IsSentByMe))
                 {
-                    UserId = invitation.ToUserId,
-                    Email = invitation.ToUserEmail,
-                    FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
-                    LastName = string.Empty,
-                    Status = "rejected",
-                    AddedAt = invitation.CreatedAt,
-                    IsSentByMe = true
-                });
+                    System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent rejected invitation to {invitation.ToUserEmail}");
+                    CareTakers.Add(new CaregiverInfo
+                    {
+                        UserId = invitation.ToUserId,
+                        Email = invitation.ToUserEmail,
+                        FirstName = invitation.ToUserEmail.Split('@').FirstOrDefault() ?? invitation.ToUserEmail,
+                        LastName = string.Empty,
+                        Status = "rejected",
+                        AddedAt = invitation.CreatedAt,
+                        IsSentByMe = true
+                    });
+                }
             }
 
             NoCareTakersLabel.IsVisible = CareTakers.Count == 0;
@@ -186,8 +226,8 @@ public partial class ManageCareTakersPage : ContentPage
         }
         finally
         {
-            CareTakersLoadingIndicator.IsRunning = false;
-            CareTakersLoadingIndicator.IsVisible = false;
+            IsRefreshing = false;
+            _isLoadingData = false;
         }
     }
 

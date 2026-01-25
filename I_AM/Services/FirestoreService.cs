@@ -5,13 +5,14 @@ using I_AM.Services.Interfaces;
 
 namespace I_AM.Services;
 
-/// <summary>
-/// Refactored FirestoreService with improved maintainability and reduced duplication
-/// </summary>
 public class FirestoreService : IFirestoreService
 {
     private readonly HttpClient _httpClient;
     private readonly string _projectId = FirebaseConfig.ProjectId;
+    /// <summary>
+    /// Stale które definiuj¹ nazwy kolekcji oraz statusów u¿ywane w aplikacji oraz Firestore
+    /// np. zmiana COLLECTION_INVITATIONS zmieni nazwê tej kolekcji w apce oraz stworzy j¹ w Firestore.
+    /// </summary>
 
     // Firestore Collection Names
     private const string COLLECTION_USERS = "users";
@@ -887,6 +888,7 @@ public class FirestoreService : IFirestoreService
 
     /// <summary>
     /// Builds a Firestore REST API URL
+    /// Funkcja buduj¹ca adres URL, nie ma co poprawiaæ
     /// </summary>
     private string BuildFirestoreUrl(string collection, string? documentId = null, string? queryParams = null)
     {

@@ -22,7 +22,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                 HorizontalOptions="Center" />
         </VerticalStackLayout>
 
-        <ScrollView Grid.Row="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
+        <RefreshView Grid.Row="1" Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}" BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
             <VerticalStackLayout 
                 Padding="20"
                 Spacing="15">
@@ -131,7 +131,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                     Margin="0,20,0,0" />
 
             </VerticalStackLayout>
-        </ScrollView>
+        </RefreshView>
 
         <VerticalStackLayout 
             Grid.Row="2"
