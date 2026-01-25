@@ -5,7 +5,7 @@ namespace I_AM.Models;
 /// <summary>
 /// Information about a caregiver assigned to a user
 /// </summary>
-public class CaregiverInfo
+public class CarePersonInfo
 {
     [JsonPropertyName("userId")]
     public string UserId { get; set; } = string.Empty;

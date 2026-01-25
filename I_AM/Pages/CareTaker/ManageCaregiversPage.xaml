@@ -86,7 +86,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
 
                 <CollectionView x:Name="CaregiversCollectionView" ItemsSource="{Binding Caregivers}">
                     <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="local:CaregiverInfo">
+                        <DataTemplate x:DataType="local:CarePersonInfo">
                             <Frame Margin="0,5,0,5" Padding="15" BorderColor="{AppThemeBinding Light=#E0E0E0, Dark=#333333}" CornerRadius="8" BackgroundColor="{AppThemeBinding Light=White, Dark=#1F1F1F}">
                                 <VerticalStackLayout Spacing="10">
                                     <StackLayout Orientation="Horizontal" Spacing="10">

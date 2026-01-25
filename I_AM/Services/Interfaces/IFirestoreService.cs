@@ -31,8 +31,8 @@ public interface IFirestoreService
     // Caregiver and Caretaker Relationship Operations
     Task<bool> RemoveCaregiverAsync(string userId, string caregiverId, string idToken);
     Task<bool> RemoveCaretakerAsync(string userId, string caretakerId, string idToken);
-    Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken);
-    Task<List<CaregiverInfo>> GetCaretakersAsync(string userId, string idToken);
+    Task<List<CarePersonInfo>> GetCaregiversAsync(string userId, string idToken);
+    Task<List<CarePersonInfo>> GetCaretakersAsync(string userId, string idToken);
 
     // Question Management Operations
     Task<bool> SaveQuestionToCaretakerAsync(string caretakerId, Question question, string idToken);

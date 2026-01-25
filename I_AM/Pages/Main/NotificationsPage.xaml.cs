@@ -7,14 +7,14 @@ namespace I_AM.Pages.Main;
 
 public partial class NotificationPage : ContentPage
 {
-    public ObservableCollection<NotificationItem> Notifications { get; set; }
+    public ObservableCollection<Notification> Notifications { get; set; }
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
 
     public NotificationPage()
     {
         InitializeComponent();
-        Notifications = new ObservableCollection<NotificationItem>();
+        Notifications = new ObservableCollection<Notification>();
         BindingContext = this;
         _authService = ServiceHelper.GetService<IAuthenticationService>();
         _firestoreService = ServiceHelper.GetService<IFirestoreService>();
@@ -37,6 +37,7 @@ public partial class NotificationPage : ContentPage
 
             Notifications.Clear();
 
+            // Tego nie rozumiem jak dokladnie dziala/pobiera dane
             var userId = await _authService.GetCurrentUserIdAsync();
             var idToken = await _authService.GetCurrentIdTokenAsync();
 
@@ -64,10 +65,10 @@ public partial class NotificationPage : ContentPage
                 // If current user is a caregiver, they are receiving an invitation to become a caregiver
                 // If current user is a caretaker, they are receiving an invitation to accept a caregiver
                 var message = isCaregiver 
-                    ? $"{invitation.FromUserName} chcê byæ twoim opiekunem" 
-                    : $"{invitation.FromUserName} chcê byæ twoim podopiecznym";
+                    ? $"{invitation.FromUserName} chce byæ twoim podopiecznym" 
+                    : $"{invitation.FromUserName} chce byæ twoim opiekunem";
                 
-                Notifications.Add(new NotificationItem
+                Notifications.Add(new Notification
                 {
                     Id = invitation.Id,
                     Title = $"Zaproszenie od {invitation.FromUserName}",
@@ -97,19 +98,9 @@ public partial class NotificationPage : ContentPage
         EmptyStateLayout.IsVisible = true;
     }
 
-    private async void OnRefreshClicked(object sender, EventArgs e)
-    {
-        await LoadNotificationsAsync();
-    }
-
-    private async void OnBackClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("..");
-    }
-
     private async void OnAcceptButtonClicked(object sender, EventArgs e)
     {
-        if (sender is Button button && button.BindingContext is NotificationItem notification)
+        if (sender is Button button && button.BindingContext is Notification notification)
         {
             try
             {
@@ -174,7 +165,7 @@ public partial class NotificationPage : ContentPage
 
     private async void OnRejectButtonClicked(object sender, EventArgs e)
     {
-        if (sender is Button button && button.BindingContext is NotificationItem notification)
+        if (sender is Button button && button.BindingContext is Notification notification)
         {
             try
             {
@@ -225,7 +216,7 @@ public partial class NotificationPage : ContentPage
     }
 }
 
-public class NotificationItem
+public class Notification
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Title { get; set; } = string.Empty;
@@ -236,17 +227,4 @@ public class NotificationItem
     public string InvitationId { get; set; } = string.Empty;
     public string CaregiverId { get; set; } = string.Empty;
     public string CaregiverEmail { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Stary model - pozostawiony dla kompatybilnoœci
-/// </summary>
-public class Notification
-{
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Title { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public bool IsRead { get; set; } = false;
-    public string Type { get; set; } = "info";
 }

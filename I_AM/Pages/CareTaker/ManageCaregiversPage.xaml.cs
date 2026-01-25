@@ -10,7 +10,7 @@ public partial class ManageCaregiversPage : ContentPage
 {
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
-    public ObservableCollection<CaregiverInfo> Caregivers { get; set; }
+    public ObservableCollection<CarePersonInfo> Caregivers { get; set; }
     
     private bool _isRefreshing;
     public bool IsRefreshing
@@ -35,7 +35,7 @@ public partial class ManageCaregiversPage : ContentPage
     public ManageCaregiversPage()
     {
         InitializeComponent();
-        Caregivers = new ObservableCollection<CaregiverInfo>();
+        Caregivers = new ObservableCollection<CarePersonInfo>();
         RefreshCommand = new Command(async () => await LoadCaregiversAsync());
         BindingContext = this;
         _authService = ServiceHelper.GetService<IAuthenticationService>();
@@ -132,7 +132,7 @@ public partial class ManageCaregiversPage : ContentPage
                 if (!Caregivers.Any(c => c.UserId == invitation.ToUserId && c.Status == "pending" && c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
-                    Caregivers.Add(new CaregiverInfo
+                    Caregivers.Add(new CarePersonInfo
                     {
                         UserId = invitation.ToUserId,
                         Email = invitation.ToUserEmail,
@@ -151,7 +151,7 @@ public partial class ManageCaregiversPage : ContentPage
                 if (!Caregivers.Any(c => c.UserId == invitation.ToUserId && c.Status == "rejected" && c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding sent rejected invitation to {invitation.ToUserEmail}, status: {invitation.Status}");
-                    Caregivers.Add(new CaregiverInfo
+                    Caregivers.Add(new CarePersonInfo
                     {
                         UserId = invitation.ToUserId,
                         Email = invitation.ToUserEmail,
@@ -170,7 +170,7 @@ public partial class ManageCaregiversPage : ContentPage
                 if (!Caregivers.Any(c => c.UserId == invitation.FromUserId && c.Status == "pending" && !c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding received pending invitation from {invitation.FromUserName}");
-                    Caregivers.Add(new CaregiverInfo
+                    Caregivers.Add(new CarePersonInfo
                     {
                         UserId = invitation.FromUserId,
                         Email = invitation.ToUserEmail,
@@ -189,7 +189,7 @@ public partial class ManageCaregiversPage : ContentPage
                 if (!Caregivers.Any(c => c.UserId == invitation.FromUserId && c.Status == "rejected" && !c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCaregiverPage] LoadCaregiversAsync: Adding received rejected invitation from {invitation.FromUserName}");
-                    Caregivers.Add(new CaregiverInfo
+                    Caregivers.Add(new CarePersonInfo
                     {
                         UserId = invitation.FromUserId,
                         Email = invitation.ToUserEmail,
@@ -338,7 +338,7 @@ public partial class ManageCaregiversPage : ContentPage
     {
         if (sender is not Button button) return;
 
-        var caregiver = button.BindingContext as CaregiverInfo;
+        var caregiver = button.BindingContext as CarePersonInfo;
         if (caregiver == null) return;
 
         var result = await DisplayAlert(

@@ -3,7 +3,6 @@ using System.Windows.Input;
 using I_AM.Models;
 using I_AM.Services;
 using I_AM.Services.Interfaces;
-using I_AM.Services.Helpers;
 
 namespace I_AM.Pages.CareGiver;
 
@@ -11,7 +10,7 @@ public partial class ManageCareTakersPage : ContentPage
 {
     private readonly IAuthenticationService _authService;
     private readonly IFirestoreService _firestoreService;
-    public ObservableCollection<CaregiverInfo> CareTakers { get; set; }
+    public ObservableCollection<CarePersonInfo> CareTakers { get; set; }
     
     private bool _isRefreshing;
     public bool IsRefreshing
@@ -36,7 +35,7 @@ public partial class ManageCareTakersPage : ContentPage
     public ManageCareTakersPage()
     {
         InitializeComponent();
-        CareTakers = new ObservableCollection<CaregiverInfo>();
+        CareTakers = new ObservableCollection<CarePersonInfo>();
         RefreshCommand = new Command(async () => await LoadCareTakersAsync());
         BindingContext = this;
         _authService = ServiceHelper.GetService<IAuthenticationService>();
@@ -48,19 +47,9 @@ public partial class ManageCareTakersPage : ContentPage
         base.OnAppearing();
         if (!_isLoadingData)
         {
+            System.Diagnostics.Debug.WriteLine("[ManageCareTakerPage] OnAppearing called");
             await LoadCareTakersAsync();
         }
-    }
-
-    private void ConfigureButtonVisibility()
-    {
-        // Get the CollectionView element
-        var collectionView = CareTakersCollectionView;
-        if (collectionView?.ItemsSource == null)
-            return;
-
-        // We need to update visibility after items are added
-        // Since we can't directly access template controls, we'll handle this in each button's clicked event
     }
 
     private async Task LoadCareTakersAsync()
@@ -143,7 +132,7 @@ public partial class ManageCareTakersPage : ContentPage
                 if (!CareTakers.Any(c => c.UserId == invitation.FromUserId && c.Status == "pending" && !c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received pending invitation from {invitation.FromUserName}");
-                    CareTakers.Add(new CaregiverInfo
+                    CareTakers.Add(new CarePersonInfo
                     {
                         UserId = invitation.FromUserId,
                         Email = invitation.ToUserEmail,
@@ -162,7 +151,7 @@ public partial class ManageCareTakersPage : ContentPage
                 if (!CareTakers.Any(c => c.UserId == invitation.FromUserId && c.Status == "rejected" && !c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding received rejected invitation from {invitation.FromUserName}");
-                    CareTakers.Add(new CaregiverInfo
+                    CareTakers.Add(new CarePersonInfo
                     {
                         UserId = invitation.FromUserId,
                         Email = invitation.ToUserEmail,
@@ -181,7 +170,7 @@ public partial class ManageCareTakersPage : ContentPage
                 if (!CareTakers.Any(c => c.UserId == invitation.ToUserId && c.Status == "pending" && c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent pending invitation to {invitation.ToUserEmail}");
-                    CareTakers.Add(new CaregiverInfo
+                    CareTakers.Add(new CarePersonInfo
                     {
                         UserId = invitation.ToUserId,
                         Email = invitation.ToUserEmail,
@@ -200,7 +189,7 @@ public partial class ManageCareTakersPage : ContentPage
                 if (!CareTakers.Any(c => c.UserId == invitation.ToUserId && c.Status == "rejected" && c.IsSentByMe))
                 {
                     System.Diagnostics.Debug.WriteLine($"[ManageCareTakersPage] LoadCareTakersAsync: Adding sent rejected invitation to {invitation.ToUserEmail}");
-                    CareTakers.Add(new CaregiverInfo
+                    CareTakers.Add(new CarePersonInfo
                     {
                         UserId = invitation.ToUserId,
                         Email = invitation.ToUserEmail,
@@ -341,7 +330,7 @@ public partial class ManageCareTakersPage : ContentPage
     {
         if (sender is not Button button) return;
 
-        var careTaker = button.BindingContext as CaregiverInfo;
+        var careTaker = button.BindingContext as CarePersonInfo;
         if (careTaker == null) return;
         
         // Only allow accepting received pending invitations (IsSentByMe = false, Status = "pending")
@@ -439,7 +428,7 @@ public partial class ManageCareTakersPage : ContentPage
     {
         if (sender is not Button button) return;
 
-        var careTaker = button.BindingContext as CaregiverInfo;
+        var careTaker = button.BindingContext as CarePersonInfo;
         if (careTaker == null) return;
         
         // Only allow rejecting received pending invitations (IsSentByMe = false, Status = "pending")
@@ -510,7 +499,7 @@ public partial class ManageCareTakersPage : ContentPage
     {
         if (sender is not Button button) return;
 
-        var careTaker = button.BindingContext as CaregiverInfo;
+        var careTaker = button.BindingContext as CarePersonInfo;
         if (careTaker == null) return;
 
         var result = await DisplayAlert(

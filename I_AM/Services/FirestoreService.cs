@@ -500,9 +500,9 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<List<CaregiverInfo>> GetCaregiversAsync(string userId, string idToken)
+    public async Task<List<CarePersonInfo>> GetCaregiversAsync(string userId, string idToken)
     {
-        var caregivers = new List<CaregiverInfo>();
+        var caregivers = new List<CarePersonInfo>();
 
         try
         {
@@ -523,7 +523,7 @@ public class FirestoreService : IFirestoreService
                 var profile = await GetUserProfileAsync(caregiverId, idToken);
                 if (profile != null)
                 {
-                    caregivers.Add(new CaregiverInfo
+                    caregivers.Add(new CarePersonInfo
                     {
                         UserId = caregiverId,
                         Email = profile.Email,
@@ -544,9 +544,9 @@ public class FirestoreService : IFirestoreService
         }
     }
 
-    public async Task<List<CaregiverInfo>> GetCaretakersAsync(string userId, string idToken)
+    public async Task<List<CarePersonInfo>> GetCaretakersAsync(string userId, string idToken)
     {
-        var caretakers = new List<CaregiverInfo>();
+        var caretakers = new List<CarePersonInfo>();
 
         try
         {
@@ -567,7 +567,7 @@ public class FirestoreService : IFirestoreService
                 var profile = await GetUserProfileAsync(caretakerId, idToken);
                 if (profile != null)
                 {
-                    caretakers.Add(new CaregiverInfo
+                    caretakers.Add(new CarePersonInfo
                     {
                         UserId = caretakerId,
                         Email = profile.Email,

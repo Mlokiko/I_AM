@@ -11,7 +11,7 @@ public class ShowAcceptRejectButtonsConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is CaregiverInfo caregiverInfo)
+        if (value is CarePersonInfo caregiverInfo)
         {
             return !caregiverInfo.IsSentByMe && caregiverInfo.Status == "pending";
         }
@@ -34,7 +34,7 @@ public class ShowDeleteButtonConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is CaregiverInfo caregiverInfo)
+        if (value is CarePersonInfo caregiverInfo)
         {
             // Show delete for accepted status regardless of who sent it
             if (caregiverInfo.Status == "accepted")

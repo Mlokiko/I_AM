@@ -26,7 +26,7 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                             <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#000000, Dark=#FFFFFF}" />
                             <Label Text="{Binding Message}" FontSize="14" TextColor="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
                             <Label Text="{Binding CreatedAt}" FontSize="12" TextColor="{AppThemeBinding Light=#999999, Dark=#808080}" />
-                            
+
                             <StackLayout Orientation="Horizontal" Spacing="10" Padding="0,10,0,0">
                                 <Button 
                                     x:Name="AcceptButton"
@@ -52,9 +52,6 @@ BackgroundColor="{AppThemeBinding Light=White, Dark=#121212}">
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-
-        <Button x:Name="RefreshButton" Text="Odśwież" Clicked="OnRefreshClicked" BackgroundColor="#512BD4" TextColor="White" />
-        <Button x:Name="BackButton" Text="Wróć" Clicked="OnBackClicked" BackgroundColor="#512BD4" TextColor="White" />
     </VerticalStackLayout>
 
 </ContentPage>
